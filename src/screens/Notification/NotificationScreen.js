@@ -1,31 +1,41 @@
-import React, { Component, createRef } from 'react';
-import { withStyles, Layout, List, Spinner } from '@ui-kitten/components';
-import { connect } from 'react-redux';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { useTheme } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
-import { SafeAreaView, SectionList, View } from 'react-native';
-
-import ActionSheet from 'react-native-actions-sheet';
-import i18n from '../../i18n';
-
-import styles from './NotificationScreen.style';
-import NotificationItem from '../../components/NotificationItem';
 import {
-  getAllNotifications,
-  markAllNotificationAsRead,
-  markNotificationAsRead,
-} from '../../actions/notification';
-import CustomText from '../../components/Text';
-import { getGroupedNotifications } from '../../helpers';
+  SafeAreaView,
+  View,
+  AppState,
+  FlatList,
+  ActivityIndicator,
+  Dimensions,
+} from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import BottomSheetModal from 'components/BottomSheet/BottomSheet';
+import i18n from 'i18n';
+import { Header } from 'components';
+import { getCurrentRouteName } from 'helpers/NavigationHelper';
+import createStyles from './NotificationScreen.style';
+import NotificationItem from '../../components/NotificationItem';
+import { Text } from 'components';
 import NotificationItemLoader from '../../components/NotificationItemLoader';
-import { TouchableOpacity } from 'react-native-gesture-handler';
-import HeaderBar from '../../components/HeaderBar';
 import images from '../../constants/images';
-import Empty from '../../components/Empty';
+import Empty from 'components/Empty/Empty';
 import NotificationActionItem from '../../components/NotificationActionItem';
+import { useEffect } from 'react';
+import {
+  notificationSelector,
+  selectIsFetching,
+  selectAllNotificationsLoaded,
+  actions as notificationsActions,
+} from 'reducer/notificationSlice';
+
+const deviceHeight = Dimensions.get('window').height;
 
 const LoaderData = new Array(24).fill(0);
 const renderItemLoader = () => <NotificationItemLoader />;
-const actionSheetRef = createRef();
+
+import { SCREENS } from 'constants';
 
 const wait = timeout => {
   return new Promise(resolve => {
@@ -33,63 +43,43 @@ const wait = timeout => {
   });
 };
 
-class NotificationScreenComponent extends Component {
-  static propTypes = {
-    eva: PropTypes.shape({
-      style: PropTypes.object,
-      theme: PropTypes.object,
-    }).isRequired,
-    navigation: PropTypes.shape({
-      navigate: PropTypes.func.isRequired,
-    }).isRequired,
-    selectConversation: PropTypes.func,
-    allNotifications: PropTypes.array.isRequired,
-    isFetching: PropTypes.bool,
-    isAllNotificationsLoaded: PropTypes.bool,
-    getAllNotifications: PropTypes.func,
-    markAllNotificationAsRead: PropTypes.func,
-    unReadCount: PropTypes.number,
-    markNotificationAsRead: PropTypes.func,
-  };
+// The screen list thats need to be checked for refresh conversation list
+const REFRESH_SCREEN_LIST = [
+  SCREENS.CONVERSATION,
+  SCREENS.NOTIFICATION,
+  SCREENS.SETTINGS,
+  SCREENS.CHAT,
+];
 
-  static defaultProps = {
-    allNotifications: [],
-    isFetching: false,
-    selectConversation: () => {},
-    isAllNotificationsLoaded: false,
-  };
+const NotificationScreen = ({ navigation }) => {
+  const [appState, setAppState] = useState(AppState.currentState);
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { colors } = theme;
+  const allNotifications = useSelector(notificationSelector.selectAll);
+  const isFetching = useSelector(selectIsFetching);
+  const isAllNotificationsLoaded = useSelector(selectAllNotificationsLoaded);
 
-  state = {
-    pageNo: 1,
-    menuVisible: false,
-    refreshing: false,
-  };
-  componentDidMount() {
-    this.loadNotifications();
-  }
+  const notifications = allNotifications.sort((a, b) => {
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
 
-  loadNotifications = () => {
-    const { pageNo } = this.state;
-    this.props.getAllNotifications({
-      pageNo,
-    });
-  };
+  const [pageNo, setPageNo] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
 
-  loadMoreNotifications = async () => {
-    const { isAllNotificationsLoaded } = this.props;
-    await this.setState(state => ({
-      pageNo: state.pageNo + 1,
-    }));
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(notificationsActions.index({ pageNo }));
+  }, [dispatch, pageNo]);
+
+  const onEndReached = () => {
     if (!isAllNotificationsLoaded) {
-      this.loadNotifications();
+      setPageNo(pageNo + 1);
     }
   };
 
-  onEndReached = ({ distanceFromEnd }) => {
-    this.loadMoreNotifications();
-  };
-
-  renderEmptyMessage = () => {
+  const renderEmptyMessage = () => {
     return (
       <Empty
         image={images.emptyNotifications}
@@ -99,173 +89,176 @@ class NotificationScreenComponent extends Component {
     );
   };
 
-  renderEmptyList = () => {
-    const {
-      eva: { style },
-    } = this.props;
+  const renderEmptyList = () => {
     return (
-      <Layout style={style.tabContainer}>
-        <List data={LoaderData} renderItem={renderItemLoader} />
-      </Layout>
+      <View style={styles.tabContainer}>
+        <FlatList data={LoaderData} renderItem={renderItemLoader} />
+      </View>
     );
   };
 
-  renderMoreLoader = () => {
-    const {
-      isAllNotificationsLoaded,
-      eva: { style },
-    } = this.props;
+  const renderMoreLoader = () => {
     return (
-      <View style={style.loadMoreSpinnerView}>
+      <View style={styles.loadMoreSpinnerView}>
         {!isAllNotificationsLoaded ? (
-          <Spinner size="medium" />
+          <ActivityIndicator
+            size="small"
+            color={colors.textDark}
+            animating={!isAllNotificationsLoaded}
+          />
         ) : (
-          <CustomText>{`${i18n.t('NOTIFICATION.ALL_NOTIFICATION_LOADED')} 🎉`}</CustomText>
+          <Text sm color={colors.textLight}>
+            {`${i18n.t('NOTIFICATION.ALL_NOTIFICATION_LOADED')} 🎉`}
+          </Text>
         )}
       </View>
     );
   };
 
-  toggleMenu = () => {
-    this.setState({ menuVisible: !this.state.menuVisible });
-  };
+  // Update notifications when app comes to foreground from background
+  useEffect(() => {
+    const appStateListener = AppState.addEventListener('change', nextAppState => {
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        const routeName = getCurrentRouteName();
+        if (REFRESH_SCREEN_LIST.includes(routeName)) {
+          dispatch(notificationsActions.index({ pageNo }));
+        }
+      }
+      setAppState(nextAppState);
+    });
+    return () => {
+      appStateListener?.remove();
+    };
+  }, [appState, pageNo, dispatch]);
 
-  onSelectNotification = item => {
+  const onSelectNotification = item => {
     const {
       primary_actor_id,
       primary_actor_type,
       primary_actor: { id: conversationId, meta },
     } = item;
 
-    const { navigation, selectConversation } = this.props;
-
-    this.props.markNotificationAsRead({
-      primaryActorId: primary_actor_id,
-      primaryActorType: primary_actor_type,
-    });
-    selectConversation({ conversationId });
+    dispatch(
+      notificationsActions.markNotificationAsRead({
+        primaryActorId: primary_actor_id,
+        primaryActorType: primary_actor_type,
+      }),
+    );
     navigation.navigate('ChatScreen', {
       conversationId,
       meta,
     });
   };
 
-  renderRightActions = () => {
-    const {
-      eva: { style },
-    } = this.props;
-    return (
-      <React.Fragment>
-        <TouchableOpacity onPress={this.showActionSheet}>
-          <CustomText style={style.markAllText}>{i18n.t('NOTIFICATION.MARK_ALL')}</CustomText>
-        </TouchableOpacity>
-      </React.Fragment>
-    );
-  };
-
-  showActionSheet = () => {
-    actionSheetRef.current?.setModalVisible();
-  };
-
-  onPressAction = ({ itemType }) => {
-    actionSheetRef.current?.hide();
+  const onPressAction = ({ itemType }) => {
+    closeNotificationActionModal();
     if (itemType === 'mark_all') {
-      this.props.markAllNotificationAsRead();
+      dispatch(notificationsActions.markAllNotificationAsRead());
     }
   };
 
-  onRefresh = () => {
-    this.setState({ refreshing: true });
-    this.loadNotifications();
-    wait(1000).then(() => this.setState({ refreshing: false }));
+  const onRefresh = () => {
+    setRefreshing(true);
+    dispatch(notificationsActions.index({ pageNo }));
+    wait(1000).then(() => setRefreshing(false));
   };
 
-  render() {
-    const {
-      eva: { style },
-      allNotifications,
-      isFetching,
-      unReadCount,
-    } = this.props;
+  const notificationActionModal = useRef(null);
+  const notificationActionModalSnapPoints = useMemo(
+    () => [deviceHeight - 680, deviceHeight - 680],
+    [],
+  );
+  const toggleNotificationActionModal = useCallback(() => {
+    notificationActionModal.current.present() || notificationActionModal.current?.dismiss();
+  }, []);
+  const closeNotificationActionModal = useCallback(() => {
+    notificationActionModal.current?.dismiss();
+  }, []);
 
-    const groupedNotifications = getGroupedNotifications({ notifications: allNotifications });
+  return (
+    <SafeAreaView style={styles.container}>
+      <Header
+        headerText={i18n.t('NOTIFICATION.HEADER_TITLE')}
+        rightIcon="more-horizontal"
+        onPressRight={toggleNotificationActionModal}
+      />
+      <View style={styles.container}>
+        {!isFetching || notifications.length ? (
+          <React.Fragment>
+            {notifications && notifications.length ? (
+              <FlashList
+                keyExtractor={(item, index) => item + index}
+                data={notifications}
+                renderItem={({ item, index }) => (
+                  <NotificationItem
+                    item={item}
+                    read_at={item.read_at}
+                    index={index}
+                    onSelectNotification={onSelectNotification}
+                  />
+                )}
+                estimatedItemSize={20}
+                contentInsetAdjustmentBehavior="automatic"
+                onRefresh={onRefresh}
+                refreshing={refreshing}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={renderMoreLoader}
+                onEndReached={onEndReached}
+              />
+            ) : (
+              renderEmptyMessage()
+            )}
+          </React.Fragment>
+        ) : (
+          renderEmptyList()
+        )}
+      </View>
+      <BottomSheetModal
+        bottomSheetModalRef={notificationActionModal}
+        initialSnapPoints={notificationActionModalSnapPoints}
+        closeFilter={closeNotificationActionModal}
+        children={
+          <View style={styles.bottomSheetView}>
+            <NotificationActionItem
+              onPressItem={onPressAction}
+              text={i18n.t('NOTIFICATION.MARK_ALL')}
+              iconName="mail-outline"
+              itemType="mark_all"
+            />
+            <NotificationActionItem
+              onPressItem={onPressAction}
+              text={i18n.t('NOTIFICATION.CANCEL')}
+              iconName="dismiss-circle-outline"
+              itemType="cancel"
+            />
+          </View>
+        }
+      />
+    </SafeAreaView>
+  );
+};
 
-    return (
-      <SafeAreaView style={style.container}>
-        <HeaderBar
-          title={i18n.t('NOTIFICATION.HEADER_TITLE')}
-          {...(groupedNotifications.length && unReadCount && { showRightButton: true })}
-          onRightPress={this.showActionSheet}
-          buttonType="more"
-        />
-        <View>
-          {!isFetching || groupedNotifications.length ? (
-            <React.Fragment>
-              {groupedNotifications && groupedNotifications.length ? (
-                <SectionList
-                  onRefresh={() => this.onRefresh()}
-                  refreshing={this.state.refreshing}
-                  scrollEventThrottle={16}
-                  onEndReached={this.onEndReached.bind(this)}
-                  onEndReachedThreshold={0.5}
-                  sections={groupedNotifications}
-                  keyExtractor={(item, index) => item + index}
-                  renderItem={({ item, index }) => (
-                    <NotificationItem
-                      item={item}
-                      read_at={item.read_at}
-                      index={index}
-                      onSelectNotification={this.onSelectNotification}
-                    />
-                  )}
-                  renderSectionHeader={({ section: { title } }) => (
-                    <View style={style.sectionView}>
-                      <CustomText style={style.sectionHeader}>{title}</CustomText>
-                    </View>
-                  )}
-                  ListFooterComponent={this.renderMoreLoader}
-                />
-              ) : (
-                this.renderEmptyMessage()
-              )}
-            </React.Fragment>
-          ) : (
-            this.renderEmptyList()
-          )}
-        </View>
-        <ActionSheet ref={actionSheetRef} initialOffsetFromBottom={0.6} defaultOverlayOpacity={0.3}>
-          <NotificationActionItem
-            onPressItem={this.onPressAction}
-            text={i18n.t('NOTIFICATION.MARK_ALL')}
-            itemType="mark_all"
-          />
-          <NotificationActionItem
-            onPressItem={this.onPressAction}
-            text={i18n.t('NOTIFICATION.CANCEL')}
-            itemType="cancel"
-          />
-        </ActionSheet>
-      </SafeAreaView>
-    );
-  }
-}
+const propTypes = {
+  navigation: PropTypes.shape({
+    navigate: PropTypes.func.isRequired,
+  }).isRequired,
+  selectConversation: PropTypes.func,
+  allNotifications: PropTypes.array.isRequired,
+  isFetching: PropTypes.bool,
+  isAllNotificationsLoaded: PropTypes.bool,
+  getAllNotifications: PropTypes.func,
+  markAllNotificationAsRead: PropTypes.func,
+  markNotificationAsRead: PropTypes.func,
+};
 
-function bindAction(dispatch) {
-  return {
-    getAllNotifications: ({ pageNo }) => dispatch(getAllNotifications({ pageNo })),
-    markAllNotificationAsRead: () => dispatch(markAllNotificationAsRead()),
-    markNotificationAsRead: ({ primaryActorId, primaryActorType }) =>
-      dispatch(markNotificationAsRead({ primaryActorId, primaryActorType })),
-  };
-}
-function mapStateToProps(state) {
-  return {
-    allNotifications: state.notification.data.payload,
-    unReadCount: state.notification.data.meta.unread_count,
-    isFetching: state.notification.isFetching,
-    isAllNotificationsLoaded: state.notification.isAllNotificationsLoaded,
-  };
-}
+const defaultProps = {
+  allNotifications: [],
+  isFetching: false,
+  selectConversation: () => {},
+  isAllNotificationsLoaded: false,
+};
 
-const NotificationScreen = withStyles(NotificationScreenComponent, styles);
-export default connect(mapStateToProps, bindAction)(NotificationScreen);
+NotificationScreen.propTypes = propTypes;
+NotificationScreen.defaultProps = defaultProps;
+
+export default NotificationScreen;

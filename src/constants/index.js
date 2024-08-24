@@ -1,6 +1,16 @@
 import images from './images';
 
-export const MAXIMUM_FILE_UPLOAD_SIZE = 40;
+export const SCREENS = {
+  LOGIN: 'Login',
+  CONFIG_URL: 'ConfigureURL',
+  CONVERSATION: 'ConversationScreen',
+  NOTIFICATION: 'NotificationScreen',
+  SETTINGS: 'SettingsScreen',
+  DETAIL: 'Detail',
+  CHAT: 'ChatScreen',
+};
+
+export const MAXIMUM_FILE_UPLOAD_SIZE = 10;
 
 export const CONVERSATION_STATUSES = [
   {
@@ -22,6 +32,20 @@ export const CONVERSATION_STATUSES = [
   {
     key: 'all',
     name: 'All',
+  },
+];
+export const SORT_TYPES = [
+  {
+    key: 'latest',
+    name: 'Latest',
+  },
+  {
+    key: 'sort_on_created_at',
+    name: 'Created At',
+  },
+  {
+    key: 'sort_on_priority',
+    name: 'Priority',
   },
 ];
 
@@ -60,12 +84,20 @@ export const MESSAGE_STATUS = {
   FAILED: 'failed',
   SENT: 'sent',
   PROGRESS: 'progress',
+  DELIVERED: 'delivered',
+  READ: 'read',
 };
 
 export const ASSIGNEE_TYPE = {
   ME: 'me',
   UN_ASSIGNED: 'unassigned',
   ALL: 'all',
+};
+
+export const SLA_MISS_TYPES = {
+  FRT: 'frt',
+  NRT: 'nrt',
+  RT: 'rt',
 };
 
 export const INBOX_TYPES = {
@@ -146,6 +178,7 @@ export const CONVERSATION_TOGGLE_STATUS = {
 export const PRESENCE_STATUS_COLORS = {
   online: '#44ce4b',
   busy: '#ffc532',
+  offline: '#779bbb',
 };
 
 export const AVAILABILITY_TYPES = {
@@ -154,66 +187,38 @@ export const AVAILABILITY_TYPES = {
   offline: 'OFFLINE',
 };
 
+export const CONVERSATION_PRIORITY = {
+  URGENT: 'urgent',
+  HIGH: 'high',
+  LOW: 'low',
+  MEDIUM: 'medium',
+};
+
+export const CONVERSATION_PRIORITY_ORDER = {
+  urgent: 1,
+  high: 2,
+  medium: 3,
+  low: 4,
+  null: 5,
+};
+
 export const NOTIFICATION_PREFERENCE_TYPES = {
   push_conversation_creation: 'CONVERSATION_CREATE_PUSH',
   push_conversation_assignment: 'CONVERSATION_ASSIGNEE_PUSH',
   push_assigned_conversation_new_message: 'CONVERSATION_ASSIGNED_NEW_MESSAGE_PUSH',
   push_conversation_mention: 'CONVERSATION_MENTION',
+  push_participating_conversation_new_message: 'CONVERSATION_PARTICIPATING_NEW_MESSAGE_PUSH',
   email_conversation_creation: 'CONVERSATION_CREATE_EMAIL',
   email_conversation_assignment: 'CONVERSATION_ASSIGNEE_EMAIL',
   email_assigned_conversation_new_message: 'CONVERSATION_ASSIGNED_NEW_MESSAGE_EMAIL',
+  email_conversation_mention: 'CONVERSATION_MENTION_EMAIL',
+  email_participating_conversation_new_message: 'CONVERSATION_PARTICIPATING_NEW_MESSAGE_EMAIL',
 };
-
-export const SETTINGS_ITEMS = [
-  {
-    text: 'SWITCH_ACCOUNT',
-    checked: false,
-    iconName: 'briefcase-outline',
-    itemName: 'switch-account',
-  },
-
-  {
-    text: 'AVAILABILITY',
-    checked: true,
-    iconName: 'radio-outline',
-    itemName: 'availability',
-  },
-
-  {
-    text: 'NOTIFICATION',
-    checked: true,
-    iconName: 'bell-outline',
-    itemName: 'notification',
-  },
-  {
-    text: 'CHANGE_LANGUAGE',
-    checked: true,
-    iconName: 'globe-outline',
-    itemName: 'language',
-  },
-  {
-    text: 'HELP',
-    checked: true,
-    iconName: 'question-mark-circle-outline',
-    itemName: 'help',
-  },
-  {
-    text: 'CHAT_WITH_US',
-    checked: true,
-    iconName: 'headphones-outline',
-    itemName: 'chat_with_us',
-  },
-  {
-    text: 'LOG_OUT',
-    checked: false,
-    iconName: 'log-out-outline',
-    itemName: 'logout',
-  },
-];
 
 export const NOTIFICATION_TYPES = [
   'conversation_creation',
   'conversation_assignment',
   'assigned_conversation_new_message',
   'conversation_mention',
+  'participating_conversation_new_message',
 ];

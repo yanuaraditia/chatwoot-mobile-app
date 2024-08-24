@@ -1,21 +1,13 @@
-const MetroConfig = require('@ui-kitten/metro-config');
+const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
-// This will make your app load faster by processing theme during the build time,
-// instead of doing this in runtime.
-// https://akveo.github.io/react-native-ui-kitten/docs/guides/improving-performance
+const { withSentryConfig } = require('@sentry/react-native/metro');
 
-const evaConfig = {
-  evaPackage: '@eva-design/eva',
-  customMappingPath: './src/mapping.json',
-};
+/**
+ * Metro configuration
+ * https://reactnative.dev/docs/metro
+ *
+ * @type {import('metro-config').MetroConfig}
+ */
+const config = {};
 
-module.exports = MetroConfig.create(evaConfig, {
-  transformer: {
-    getTransformOptions: async () => ({
-      transform: {
-        experimentalImportSupport: false,
-        inlineRequires: true,
-      },
-    }),
-  },
-});
+module.exports = withSentryConfig(mergeConfig(getDefaultConfig(__dirname), config));

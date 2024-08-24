@@ -1,135 +1,123 @@
 /* eslint-disable react/prop-types */
-import React from 'react';
-import { View, Dimensions } from 'react-native';
+import React, { useMemo } from 'react';
+import { useTheme } from '@react-navigation/native';
+import { View, Dimensions, StyleSheet } from 'react-native';
 import PropTypes from 'prop-types';
-import { withStyles } from '@ui-kitten/components';
-
-import CustomText from '../../../components/Text';
+import { Text } from 'components';
 import { messageStamp } from '../../../helpers/TimeHelper';
-import ChatAttachmentItem from './ChatAttachmentItem';
 import ChatMessageItem from './ChatMessageItem';
+import { UserAvatar } from 'components';
 
-const styles = theme => ({
-  message: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
+import { INBOX_TYPES } from 'constants';
 
-  messageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+const createStyles = theme => {
+  const { spacing, borderRadius, colors } = theme;
+  return StyleSheet.create({
+    message: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: spacing.micro,
+    },
+    emailContainer: {
+      width: '100%',
+    },
+    activityView: {
+      padding: spacing.smaller,
+      borderRadius: borderRadius.small,
+      maxWidth: Dimensions.get('window').width - 50,
+      backgroundColor: colors.backgroundActivity,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    activityDateView: {
+      alignItems: 'flex-end',
+    },
+    messageActivity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    messageBubble: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+    },
+    outgoingMessageThumbnail: {
+      marginLeft: spacing.smaller,
+    },
+    incomingMessageThumbnail: {
+      marginRight: spacing.smaller,
+    },
+  });
+};
 
-  activityView: {
-    padding: 8,
-    borderRadius: 8,
-    maxWidth: Dimensions.get('window').width - 50,
-    backgroundColor: theme['color-background-activity'],
-    borderWidth: 1,
-    borderColor: theme['color-border-activity'],
-  },
-  activityDateView: {
-    alignItems: 'flex-end',
-  },
-
-  messageActivity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: {
-    width: 16,
-    height: 16,
-  },
-
-  messageContent: {
-    fontSize: theme['font-size-regular'],
-    fontWeight: theme['font-regular'],
-    color: theme['text-basic-color'],
-  },
-
-  date: {
-    color: theme['text-hint-color'],
-    fontSize: theme['font-size-extra-extra-small'],
-  },
-});
-
-const MessageContentComponent = ({ message, type, showAttachment, created_at }) => {
-  const { attachments } = message;
-
-  return attachments ? (
-    <ChatAttachmentItem
-      attachments={attachments}
-      message={message}
-      type={type}
-      showAttachment={showAttachment}
-      created_at={created_at}
-    />
-  ) : (
-    <ChatMessageItem message={message} type={type} created_at={created_at} />
+const MessageContentComponent = ({ conversation, message, type, showAttachment, created_at }) => {
+  return (
+    <View>
+      <ChatMessageItem
+        conversation={conversation}
+        message={message}
+        type={type}
+        created_at={created_at}
+        showAttachment={showAttachment}
+      />
+    </View>
   );
 };
 
-const MessageContent = withStyles(MessageContentComponent, styles);
+const MessageContent = MessageContentComponent;
 
-const OutGoingMessageComponent = ({ message, created_at, showAttachment }) => (
-  <React.Fragment>
-    <MessageContent
-      message={message}
-      created_at={created_at}
-      type="outgoing"
-      showAttachment={showAttachment}
-    />
-  </React.Fragment>
-);
-
-const OutGoingMessage = withStyles(OutGoingMessageComponent, styles);
-
-const IncomingMessageComponent = ({ message, created_at, showAttachment }) => (
-  <React.Fragment>
-    <MessageContent
-      message={message}
-      created_at={created_at}
-      type="incoming"
-      showAttachment={showAttachment}
-    />
-  </React.Fragment>
-);
-
-const IncomingMessage = withStyles(IncomingMessageComponent, styles);
-
-const ActivityMessageComponent = ({ eva: { style }, message, created_at }) => (
-  <View style={style.activityView}>
-    <View style={style.messageActivity}>
-      <CustomText style={style.messageContent}>{message.content}</CustomText>
+const ActivityMessageComponent = ({ message, created_at }) => {
+  const theme = useTheme();
+  const { colors } = theme;
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return (
+    <View style={styles.activityView}>
+      <View style={styles.messageActivity}>
+        <Text sm color={colors.textDarker}>
+          {message.content}
+        </Text>
+      </View>
+      <View style={styles.activityDateView}>
+        <Text xxs color={colors.text} style={styles.date}>
+          {messageStamp({ time: created_at })}
+        </Text>
+      </View>
     </View>
-    <View style={style.activityDateView}>
-      <CustomText style={style.date}>{messageStamp({ time: created_at })}</CustomText>
-    </View>
-  </View>
-);
+  );
+};
 
-const ActivityMessage = withStyles(ActivityMessageComponent, styles);
+const ActivityMessage = ActivityMessageComponent;
 
 const propTypes = {
-  eva: PropTypes.shape({
-    style: PropTypes.object,
-    theme: PropTypes.object,
-  }),
   message: PropTypes.shape({
     content: PropTypes.string,
     date: PropTypes.string,
   }),
   showAttachment: PropTypes.func,
+  conversation: PropTypes.object,
 };
 
 const defaultProps = {
   message: { content: null, date: null },
 };
 
-const ChatMessageComponent = ({ message, eva: { style }, showAttachment }) => {
+const ChatMessageComponent = ({ message, showAttachment, conversation }) => {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const { message_type, created_at } = message;
+  const channel = conversation?.meta?.channel;
+
+  const isPrivate = message?.private;
+
+  const isEmailChannel = channel === INBOX_TYPES.EMAIL;
+
+  const shouldShowFullWidth = isEmailChannel && message_type !== 2 && !isPrivate;
+
+  const isTwitterChannel = channel === INBOX_TYPES.TWITTER;
+
+  const senderName = message?.sender?.name || 'Bot';
+  const senderThumbnail = message?.sender?.thumbnail || '';
 
   let alignment = message_type ? 'flex-end' : 'flex-start';
   if (message_type === 2) {
@@ -137,33 +125,47 @@ const ChatMessageComponent = ({ message, eva: { style }, showAttachment }) => {
   }
 
   return (
-    <View style={[style.message, { justifyContent: alignment }]}>
-      <View style={style.messageContainer}>
+    <View style={[styles.message, !shouldShowFullWidth ? { justifyContent: alignment } : null]}>
+      <View style={[shouldShowFullWidth ? styles.emailContainer : {}]}>
         {alignment === 'flex-start' ? (
-          <IncomingMessage
-            message={message}
-            created_at={created_at}
-            type="incoming"
-            showAttachment={showAttachment}
-          />
+          <View style={styles.messageBubble}>
+            <MessageContent
+              conversation={conversation}
+              message={message}
+              created_at={created_at}
+              type="incoming"
+              showAttachment={showAttachment}
+            />
+          </View>
         ) : alignment === 'center' ? (
           <ActivityMessage message={message} created_at={created_at} type="activity" />
         ) : (
-          <OutGoingMessage
-            message={message}
-            created_at={created_at}
-            type="outgoing"
-            showAttachment={showAttachment}
-          />
+          <View style={styles.messageBubble}>
+            <MessageContent
+              conversation={conversation}
+              message={message}
+              created_at={created_at}
+              type="outgoing"
+              showAttachment={showAttachment}
+            />
+            {!isTwitterChannel ? (
+              <View style={styles.outgoingMessageThumbnail}>
+                <UserAvatar
+                  thumbnail={senderThumbnail}
+                  userName={senderName}
+                  size={16}
+                  fontSize={8}
+                />
+              </View>
+            ) : null}
+          </View>
         )}
       </View>
     </View>
   );
 };
 
-const ChatMessage = withStyles(ChatMessageComponent, styles);
+ChatMessageComponent.defaultProps = defaultProps;
+ChatMessageComponent.propTypes = propTypes;
 
-ChatMessage.defaultProps = defaultProps;
-ChatMessage.propTypes = propTypes;
-
-export default React.memo(ChatMessage);
+export default React.memo(ChatMessageComponent);

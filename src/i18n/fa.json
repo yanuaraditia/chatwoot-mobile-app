@@ -67,17 +67,50 @@
     "ASSIGN": "اختصاص مکالمه",
     "FILE_SIZE_LIMIT": "محدودیت حجم فایل پیوست 5MB می باشد",
     "SHARE": "اشتراک گذاری گفتگو",
-    "CANCEL": "انصراف",
+    "DETAILS": "Details",
+    "LABELS": "Conversation labels",
+    "ASSIGNED_AGENT": "ایجنت تعیین شده",
+    "TEAM": "تیم‌",
     "PRIVATE_MSG_INPUT": "این فقط برای ایجنت ها قابل مشاهده خواهد بود",
+    "SELF_ASSIGN": "Self assign conversation",
     "UN_ASSIGN": "لغو اختصاص مکالمه",
-    "MUTE_CONVERSATION": "صدای گفتگو را قطع کن",
-    "UNMUTE_CONVERSATION": "مکالمه را باصدا کنید",
-    "CONVERSATION_NOT_FOUND": "گفتگو را نمی‌تواند دریافت کرد"
+    "CONVERSATION_NOT_FOUND": "گفتگو را نمی‌تواند دریافت کرد",
+    "MARK_AS_PENDING": "علامت گذاری به عنوان در انتظار",
+    "SNOOZE_UNTIL": "به تعویق انداختن تا",
+    "SNOOZE_UNTIL_NEXT_REPLY": "تا پاسخ بعدی",
+    "SNOOZE_UNTIL_TOMORROW": "تا فردا",
+    "SNOOZE_UNTIL_NEXT_WEEK": "تا هفته بعد",
+    "SNOOZE": "Snooze conversation",
+    "CHANGE_PRIORITY": "Change priority",
+    "MESSAGES": "پیام‌ها",
+    "UNDEFINED_VARIABLES_TITLE": "متغیرهای تعریف نشده",
+    "UNDEFINED_VARIABLES_CLOSE": "بستن",
+    "DELETE_MESSAGE_TITLE": "آیا از حذف این پیام مطمئن هستید؟",
+    "DELETE_MESSAGE_SUB_TITLE": "This action cannot be undone.",
+    "COPY_MESSAGE": "Message copied to clipboard",
+    "PRIORITY": {
+      "TITLE": "اولویت",
+      "OPTIONS": {
+        "NONE": "هیچکدام",
+        "URGENT": "Urgent",
+        "HIGH": "بالا",
+        "MEDIUM": "متوسط",
+        "LOW": "پایین"
+      },
+      "CHANGE_PRIORITY": {
+        "SELECT_PLACEHOLDER": "هیچکدام",
+        "INPUT_PLACEHOLDER": "انتخاب اولویت",
+        "NO_RESULTS": "نتیجه‌ای یافت نشد",
+        "SUCCESSFUL": "تغییر اولویت گفتگوی با شناسه %{conversationId} به %{priority}",
+        "FAILED": "تغییر اولویت گفتگو با موفقیت انجام نشد. لطفا دوباره تلاش نمایید."
+      }
+    }
   },
   "FILTER": {
     "ALL_INBOXES": "همه صندوق‌های‌ورودی",
     "FILTER_BY_ASSIGNEE_TYPE": "فیلتر براساس نوع اختصاص شده",
     "FILTER_BY_CONVERSATION_STATUS": "فیلتر براساس وضعیت گفتگو",
+    "SORT_BY": "مرتب‌سازی براساس",
     "FILTER_BY_INBOX": "فیلتر براساس صندوق‌ورودی",
     "HEADER_TITLE": "فیلتر مکالمه",
     "CHOOSE_INBOX": "صندوق ورودی را انتخاب کنید",
@@ -91,13 +124,14 @@
   },
   "SETTINGS": {
     "HEADER_TITLE": "تنظیمات",
-    "AVAILABILITY": "در دسترس",
-    "NOTIFICATION": "تنظیمات اعلان",
-    "HELP": "کتاب راهنما",
-    "CHAT_WITH_US": "با ما چت کنید",
-    "LOG_OUT": "خروج از حساب",
+    "SET_AVAILABILITY": "خود را به عنوان",
+    "PREFERENCES": "تنظیمات",
+    "ABOUT": "درباره",
+    "SUPPORT": "پشتیبانی",
     "SWITCH_ACCOUNT": "سوییچ به یک حساب دیگر",
     "CHANGE_LANGUAGE": "تغییر زبان",
+    "NOTIFICATION_PREFERENCES": "تنظیمات اعلان",
+    "LOGOUT": "خروج از حساب",
     "SUBMIT": "ثبت"
   },
   "NOTIFICATION": {
@@ -115,15 +149,18 @@
   },
   "NOTIFICATION_PREFERENCE": {
     "TITLE": "تنظیمات اعلان",
-    "EMAIL": "ایمیل",
+    "EMAIL": "اعلامیه‌ به ایمیل",
     "PUSH": "پوش نوتیفیکیشن",
     "CONVERSATION_CREATE_PUSH": "هر وقت گفتگوی جدیدی شروع شد برای من پوش نوتیفیکیشن بفرست",
     "CONVERSATION_ASSIGNEE_PUSH": "هر وقت گفتگویی به من اختصاص داده شد، برای من پوش نوتیفیکیشن بفرست",
     "CONVERSATION_ASSIGNED_NEW_MESSAGE_PUSH": "وقتی پیام جدیدی در مکالمه اختصاص داده شده ایجاد می شود ، پوش نوتیفیکیشن را ارسال کنید",
     "CONVERSATION_MENTION": "هنگامی که از شما در مکالمه نام برده می شود پوش نوتیفیکیشن ارسال کنید",
+    "CONVERSATION_PARTICIPATING_NEW_MESSAGE_PUSH": "هنگامی که یک پیام جدید در یک مکالمه شرکت کننده ایجاد می شود، اعلان فشار ارسال کنید",
     "CONVERSATION_CREATE_EMAIL": "هر وقت گفتگوی جدیدی شروع شد برای من ایمیل بفرست",
     "CONVERSATION_ASSIGNEE_EMAIL": "هر وقت گفتگویی به من اختصاص داده شد،‌ ایمیل بفرست",
-    "CONVERSATION_ASSIGNED_NEW_MESSAGE_EMAIL": "با ایجاد پیام جدید در مکالمه اختصاصی ، اعلان های ایمیل را ارسال کنید"
+    "CONVERSATION_MENTION_EMAIL": "هنگامی که از شما در گفتگو نام برده می‌شود، از طریق ایمیل آگاه‌سازی ارسال کن",
+    "CONVERSATION_ASSIGNED_NEW_MESSAGE_EMAIL": "با ایجاد پیام جدید در مکالمه اختصاصی ، اعلان های ایمیل را ارسال کنید",
+    "CONVERSATION_PARTICIPATING_NEW_MESSAGE_EMAIL": "هنگامی که یک پیام جدید در یک مکالمه شرکت کننده ایجاد می شود، اعلان فشار ارسال کنید"
   },
   "CONVERSATION_DETAILS": {
     "TITLE": "اطلاعات مکالمه",
@@ -133,18 +170,44 @@
     "INITIATED_FROM": "شروع شده از",
     "IP_ADDRESS": "آدرس آی‌پی"
   },
+  "CONVERSATION_PARTICIPANTS": {
+    "TITLE": "شرکت کنندگان در گفتگو",
+    "TOTAL_PARTICIPANTS_TEXT": "%{count} نفر شرکت می کنند.",
+    "TOTAL_PARTICIPANT_TEXT": "%{count} نفر شرکت می کند.",
+    "NO_PARTICIPANTS_TEXT": "هیچ کس شرکت نمی کند!.",
+    "WATCH_CONVERSATION": "به گفتگو بپیوندید",
+    "YOU_ARE_WATCHING": "شما شرکت می کنید",
+    "NO_RECORDS_FOUND": "نتیجه‌ای یافت نشد",
+    "SELECT_PARTICIPANTS": "Select agents",
+    "ADD_PARTICIPANTS": "شرکت کنندگان را انتخاب کنید",
+    "REMAINING_PARTICIPANTS_TEXT": "others",
+    "REMAINING_PARTICIPANT_TEXT": "other"
+  },
   "CONTACT_ATTRIBUTES": {
     "TITLE": "ویژگی‌های تماس"
   },
   "CONVERSATION_ACTION": {
     "TITLE": "عملیات"
   },
+  "CONVERSATION_TEAMS": {
+    "TITLE": "تیم را تعیین کنید",
+    "SELECT_TEAM": "انتخاب تیم",
+    "NO_RESULT": "No team found"
+  },
   "CONVERSATION_LABELS": {
     "TITLE": "برچسب‌های گفتگو",
     "ADD_LABEL": "افزودن برچسب‌ها",
     "EMPTY_LIST": "لطفا برچسب‌ها را به حساب‌کاربری خود اضافه کنید",
     "NO_LABEL": "هیچ برچسبی اختصاص داده نشده است",
-    "UPDATE_LABEL": "برچسب با موفقیت به روز شد"
+    "UPDATE_LABEL": "برچسب با موفقیت به روز شد",
+    "SELECTED": "Selected",
+    "NOT_SELECTED": "No labels selected",
+    "NO_RESULT": "هیچ برچسبی یافت نشد"
+  },
+  "CONVERSATION_AGENTS": {
+    "TITLE": "ایجنت را تعیین کنید",
+    "SELECT_AGENT": "انتخاب ایجنت",
+    "NO_RESULT": "No agent found"
   },
   "AGENT": {
     "TITLE": "انتخاب ایجنت"

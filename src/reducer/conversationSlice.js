@@ -1,7 +1,7 @@
-import { createSlice, createEntityAdapter, createDraftSafeSelector } from '@reduxjs/toolkit';
-const lodashFilter = require('lodash.filter');
+import { createSlice, createEntityAdapter } from '@reduxjs/toolkit';
 import actions from './conversationSlice.action';
-import { applyFilters, findPendingMessageIndex } from '../helpers/conversationHelpers';
+import { MESSAGE_TYPES } from 'constants';
+import { findPendingMessageIndex } from '../helpers/conversationHelpers';
 export const conversationAdapter = createEntityAdapter({
   selectId: conversation => conversation.id,
 });
@@ -20,6 +20,7 @@ const conversationSlice = createSlice({
     isAllMessagesFetched: false,
     conversationStatus: 'open',
     assigneeType: 'mine',
+    sortFilter: 'latest',
     currentInbox: 0,
     loadingMessages: false,
     isChangingConversationStatus: false,
@@ -35,6 +36,9 @@ const conversationSlice = createSlice({
     },
     setActiveInbox: (state, action) => {
       state.currentInbox = action.payload;
+    },
+    setSortFilter: (state, action) => {
+      state.sortFilter = action.payload;
     },
     clearConversation: (state, action) => {
       const conversationId = action.payload;
@@ -65,7 +69,7 @@ const conversationSlice = createSlice({
         conversationAdapter.addOne(state, conversation);
       }
     },
-    addMessage: (state, action) => {
+    addOrUpdateMessage: (state, action) => {
       const message = action.payload;
 
       const { conversation_id: conversationId } = message;
@@ -73,9 +77,14 @@ const conversationSlice = createSlice({
         return;
       }
       const conversation = state.entities[conversationId];
+
       // If the conversation is not present in the store, we don't need to add the message
       if (!conversation) {
         return;
+      }
+      // If the message type is incoming, set the can reply to true
+      if (message.message_type === MESSAGE_TYPES.INCOMING) {
+        conversation.can_reply = true;
       }
       const pendingMessageIndex = findPendingMessageIndex(conversation, message);
       if (pendingMessageIndex !== -1) {
@@ -83,81 +92,123 @@ const conversationSlice = createSlice({
       } else {
         conversation.messages.push(message);
         conversation.timestamp = message.created_at;
+        const { conversation: { unread_count: unreadCount = 0 } = {} } = message;
+        conversation.unread_count = unreadCount;
       }
     },
-    updateContactsPresence: (state, action) => {
-      const { contacts } = action.payload;
-      const allConversations = state.entities;
-
-      Object.keys(contacts).forEach(contactId => {
-        let filteredConversations = lodashFilter(allConversations, {
-          meta: { sender: { id: parseInt(contactId) } },
-        });
-        // TODO: This is a temporary fix for the issue of contact presence not updating if the contact goes offline
-        filteredConversations.forEach(item => {
-          state.entities[item.id].meta.sender.availability_status = contacts[contactId];
-        });
-      });
-    },
-  },
-  extraReducers: {
-    [actions.fetchConversations.pending]: state => {
-      state.loading = true;
-    },
-    [actions.fetchConversations.fulfilled]: (state, { payload }) => {
-      conversationAdapter.upsertMany(state, payload.conversations);
-      state.meta = payload.meta;
-      state.loading = false;
-      state.isAllConversationsFetched = payload.conversations.length < 20;
-    },
-    [actions.fetchConversations.rejected]: (state, { error }) => {
-      state.loading = false;
-    },
-    [actions.fetchConversationStats.fulfilled]: (state, { payload }) => {
-      state.meta = payload.meta;
-    },
-    [actions.fetchConversation.pending]: state => {
-      state.isConversationFetching = true;
-    },
-    [actions.fetchConversation.fulfilled]: (state, { payload }) => {
-      conversationAdapter.upsertOne(state, payload);
-      state.isAllMessagesFetched = false;
-      state.isConversationFetching = false;
-    },
-    [actions.fetchConversation.rejected]: (state, { payload }) => {
-      state.isConversationFetching = false;
-    },
-    [actions.fetchPreviousMessages.pending]: state => {
-      state.loadingMessages = true;
-      state.isAllMessagesFetched = false;
-    },
-    [actions.fetchPreviousMessages.fulfilled]: (state, { payload }) => {
-      const { data, conversationId } = payload;
+    updateConversationLastActivity: (state, action) => {
+      const { conversationId, lastActivityAt } = action.payload;
       const conversation = state.entities[conversationId];
-      conversation.messages.unshift(...data);
-      state.loadingMessages = false;
-      state.isAllMessagesFetched = data.length < 20;
-    },
-    [actions.fetchPreviousMessages.rejected]: state => {
-      state.loadingMessages = false;
-    },
-    [actions.markMessagesAsRead.fulfilled]: (state, { payload }) => {
-      const { id, lastSeen } = payload;
-      const conversation = state.entities[id];
       if (!conversation) {
         return;
       }
-      conversation.agent_last_seen_at = lastSeen;
+      conversation.last_activity_at = lastActivityAt;
     },
-    [actions.toggleConversationStatus.pending]: (state, action) => {
-      state.isChangingConversationStatus = true;
-    },
-    [actions.toggleConversationStatus.fulfilled]: (state, { payload }) => {
-      state.isChangingConversationStatus = false;
-    },
-    [actions.toggleConversationStatus.rejected]: (state, { error }) => {
-      state.isChangingConversationStatus = false;
-    },
+  },
+
+  extraReducers: builder => {
+    builder
+      .addCase(actions.fetchConversations.pending, state => {
+        state.loading = true;
+      })
+      .addCase(actions.fetchConversations.fulfilled, (state, { payload }) => {
+        conversationAdapter.upsertMany(state, payload.conversations);
+        state.meta = payload.meta;
+        state.loading = false;
+        state.isAllConversationsFetched = payload.conversations.length < 20;
+      })
+      .addCase(actions.fetchConversations.rejected, (state, { error }) => {
+        state.loading = false;
+      })
+      .addCase(actions.fetchConversationStats.fulfilled, (state, { payload }) => {
+        state.meta = payload.meta;
+      })
+      .addCase(actions.fetchConversation.pending, state => {
+        state.isConversationFetching = true;
+      })
+      .addCase(actions.fetchConversation.fulfilled, (state, { payload }) => {
+        conversationAdapter.upsertOne(state, payload);
+        state.isAllMessagesFetched = false;
+        state.isConversationFetching = false;
+      })
+      .addCase(actions.fetchConversation.rejected, (state, { payload }) => {
+        state.isConversationFetching = false;
+      })
+      .addCase(actions.fetchPreviousMessages.pending, state => {
+        state.loadingMessages = true;
+        state.isAllMessagesFetched = false;
+      })
+      .addCase(actions.fetchPreviousMessages.fulfilled, (state, { payload }) => {
+        const { data, conversationId } = payload;
+        if (!state.entities[conversationId]) {
+          return;
+        }
+        const conversation = state.entities[conversationId];
+        conversation.messages.unshift(...data);
+        state.loadingMessages = false;
+        state.isAllMessagesFetched = data.length < 20;
+      })
+      .addCase(actions.fetchPreviousMessages.rejected, state => {
+        state.loadingMessages = false;
+      })
+      .addCase(actions.markMessagesAsRead.fulfilled, (state, { payload }) => {
+        const { id, lastSeen } = payload;
+        const conversation = state.entities[id];
+        if (!conversation) {
+          return;
+        }
+        conversation.unread_count = 0;
+        conversation.agent_last_seen_at = lastSeen;
+      })
+      .addCase(actions.markMessagesAsUnread.fulfilled, (state, { payload }) => {
+        const { id, unreadCount, lastSeen } = payload;
+        const conversation = state.entities[id];
+        if (!conversation) {
+          return;
+        }
+        conversation.unread_count = unreadCount;
+        conversation.agent_last_seen_at = lastSeen;
+      })
+      .addCase(actions.muteConversation.fulfilled, (state, { payload }) => {
+        const { id } = payload;
+        const conversation = state.entities[id];
+        if (!conversation) {
+          return;
+        }
+        conversation.muted = true;
+      })
+      .addCase(actions.unmuteConversation.fulfilled, (state, { payload }) => {
+        const { id } = payload;
+        const conversation = state.entities[id];
+        if (!conversation) {
+          return;
+        }
+        conversation.muted = false;
+      })
+      .addCase(actions.toggleConversationStatus.pending, (state, action) => {
+        state.isChangingConversationStatus = true;
+      })
+      .addCase(actions.toggleConversationStatus.fulfilled, (state, { payload }) => {
+        const { id, updatedStatus, updatedSnoozedUntil } = payload;
+        const conversation = state.entities[id];
+        if (!conversation) {
+          return;
+        }
+        conversation.status = updatedStatus;
+        conversation.snoozed_until = updatedSnoozedUntil;
+        state.isChangingConversationStatus = false;
+      })
+      .addCase(actions.toggleConversationStatus.rejected, state => {
+        state.isChangingConversationStatus = false;
+      })
+      .addCase(actions.togglePriority.fulfilled, (state, { payload }) => {
+        const { id, priority } = payload;
+        const conversation = state.entities[id];
+        if (!conversation) {
+          return;
+        }
+        conversation.priority = priority;
+      });
   },
 });
 export const conversationSelector = conversationAdapter.getSelectors(state => state.conversations);
@@ -167,6 +218,7 @@ export const selectAllConversationFetched = state => state.conversations.isAllCo
 export const selectConversationStatus = state => state.conversations.conversationStatus;
 export const selectAssigneeType = state => state.conversations.assigneeType;
 export const selectActiveInbox = state => state.conversations.currentInbox;
+export const selectSortFilter = state => state.conversations.sortFilter;
 export const selectMessagesLoading = state => state.conversations.loadingMessages;
 export const selectConversationFetching = state => state.conversations.isConversationFetching;
 export const selectAllMessagesFetched = state => state.conversations.isAllMessagesFetched;
@@ -174,65 +226,18 @@ export const selectConversationToggleStatus = state =>
   state.conversations.isChangingConversationStatus;
 export const selectConversationAssigneeStatus = state =>
   state.conversations.isChangingConversationAssignee;
-export const selectors = {
-  getFilteredConversations: createDraftSafeSelector(
-    [conversationSelector.selectAll, (_, filters) => filters],
-    (conversations, filters) => {
-      const { assigneeType, userId } = filters;
 
-      const sortedConversations = conversations.sort((a, b) => {
-        return b.timestamp - a.timestamp;
-      });
-      if (assigneeType === 'mine') {
-        return sortedConversations.filter(conversation => {
-          const { assignee } = conversation.meta;
-          const shouldFilter = applyFilters(conversation, filters);
-          const isAssignedToMe = assignee && assignee.id === userId;
-          const isChatMine = isAssignedToMe && shouldFilter;
-          return isChatMine;
-        });
-      }
-      if (assigneeType === 'unassigned') {
-        return sortedConversations.filter(conversation => {
-          const isUnAssigned = !conversation.meta.assignee;
-          const shouldFilter = applyFilters(conversation, filters);
-          return isUnAssigned && shouldFilter;
-        });
-      }
-
-      return sortedConversations.filter(conversation => {
-        const shouldFilter = applyFilters(conversation, filters);
-        return shouldFilter;
-      });
-    },
-  ),
-  getMessagesByConversationId: createDraftSafeSelector(
-    [conversationSelector.selectEntities, (_, conversationId) => conversationId],
-    (conversations, conversationId) => {
-      const conversation = conversations[conversationId];
-      if (!conversation) {
-        return [];
-      }
-      return conversation.messages;
-    },
-  ),
-  getConversationById: createDraftSafeSelector(
-    [conversationSelector.selectEntities, (_, conversationId) => conversationId],
-    (conversations, conversationId) => {
-      return conversations[conversationId];
-    },
-  ),
-};
 export const {
   clearAllConversations,
   clearConversation,
   setConversationStatus,
   setAssigneeType,
   setActiveInbox,
+  setSortFilter,
   addConversation,
-  addMessage,
+  addOrUpdateMessage,
   updateConversation,
-  updateContactsPresence,
+  updateConversationLastActivity,
 } = conversationSlice.actions;
 
 export default conversationSlice.reducer;

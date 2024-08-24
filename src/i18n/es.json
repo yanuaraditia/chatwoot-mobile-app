@@ -67,17 +67,50 @@
     "ASSIGN": "Asignar conversación",
     "FILE_SIZE_LIMIT": "El archivo supera el límite de 5MB de archivos adjuntos",
     "SHARE": "Compartir la conversación",
-    "CANCEL": "Cancelar",
+    "DETAILS": "Detalles",
+    "LABELS": "Etiquetas de conversación",
+    "ASSIGNED_AGENT": "Agente asignado",
+    "TEAM": "Equipo",
     "PRIVATE_MSG_INPUT": "Esto será visible sólo para los agentes",
+    "SELF_ASSIGN": "Auto asignar conversación",
     "UN_ASSIGN": "Desasignar conversación",
-    "MUTE_CONVERSATION": "Silenciar conversación",
-    "UNMUTE_CONVERSATION": "Quitar silencio de conversación",
-    "CONVERSATION_NOT_FOUND": "No se pudo obtener la conversación"
+    "CONVERSATION_NOT_FOUND": "No se pudo obtener la conversación",
+    "MARK_AS_PENDING": "Marcar como pendiente",
+    "SNOOZE_UNTIL": "Posponer hasta",
+    "SNOOZE_UNTIL_NEXT_REPLY": "Hasta la siguiente respuesta",
+    "SNOOZE_UNTIL_TOMORROW": "Hasta mañana",
+    "SNOOZE_UNTIL_NEXT_WEEK": "Hasta la próxima semana",
+    "SNOOZE": "Posponer conversación",
+    "CHANGE_PRIORITY": "Cambiar prioridad",
+    "MESSAGES": "Mensajes",
+    "UNDEFINED_VARIABLES_TITLE": "Variables indefinidas",
+    "UNDEFINED_VARIABLES_CLOSE": "Cerrar",
+    "DELETE_MESSAGE_TITLE": "¿Está seguro que desea eliminar este mensaje?",
+    "DELETE_MESSAGE_SUB_TITLE": "Esta acción no se puede deshacer.",
+    "COPY_MESSAGE": "Mensaje copiado al portapapeles",
+    "PRIORITY": {
+      "TITLE": "Prioridad",
+      "OPTIONS": {
+        "NONE": "Ninguna",
+        "URGENT": "Urgente",
+        "HIGH": "Alta",
+        "MEDIUM": "Media",
+        "LOW": "Baja"
+      },
+      "CHANGE_PRIORITY": {
+        "SELECT_PLACEHOLDER": "Ninguna",
+        "INPUT_PLACEHOLDER": "Seleccionar prioridad",
+        "NO_RESULTS": "No se encontraron resultados",
+        "SUCCESSFUL": "Se ha cambiado la prioridad del id de conversación %{conversationId} a %{priority}",
+        "FAILED": "No se pudo cambiar la prioridad. Por favor, inténtelo de nuevo."
+      }
+    }
   },
   "FILTER": {
     "ALL_INBOXES": "Todas las bandejas",
     "FILTER_BY_ASSIGNEE_TYPE": "Filtrar por tipo de asignado",
     "FILTER_BY_CONVERSATION_STATUS": "Filtrar por estado de conversación",
+    "SORT_BY": "Ordenar por",
     "FILTER_BY_INBOX": "Filtrar por bandeja de entrada",
     "HEADER_TITLE": "Filtro de conversación",
     "CHOOSE_INBOX": "Elegir bandeja de entrada",
@@ -87,17 +120,18 @@
     "BOT": "Bot",
     "SUBMIT": "Enviar",
     "PENDING": "En espera",
-    "SNOOZED": "Postpuestas"
+    "SNOOZED": "Pospuesto"
   },
   "SETTINGS": {
     "HEADER_TITLE": "Preferencias",
-    "AVAILABILITY": "Disponible",
-    "NOTIFICATION": "Preferencias de Notificación",
-    "HELP": "Ayuda",
-    "CHAT_WITH_US": "Chatea con nosotros",
-    "LOG_OUT": "Cerrar sesión",
+    "SET_AVAILABILITY": "Ponte como",
+    "PREFERENCES": "Preferencias",
+    "ABOUT": "Acerca de",
+    "SUPPORT": "Soporte",
     "SWITCH_ACCOUNT": "Cambiar de cuenta",
     "CHANGE_LANGUAGE": "Cambiar idioma",
+    "NOTIFICATION_PREFERENCES": "Preferencias de Notificación",
+    "LOGOUT": "Cerrar sesión",
     "SUBMIT": "Enviar"
   },
   "NOTIFICATION": {
@@ -115,15 +149,18 @@
   },
   "NOTIFICATION_PREFERENCE": {
     "TITLE": "Preferencias de notificación",
-    "EMAIL": "Email",
-    "PUSH": "Push",
+    "EMAIL": "Notificaciones por email",
+    "PUSH": "Notificaciones push",
     "CONVERSATION_CREATE_PUSH": "Enviar notificaciones push cuando se crea una nueva conversación",
     "CONVERSATION_ASSIGNEE_PUSH": "Enviar notificaciones push cuando se me asigne una conversación",
     "CONVERSATION_ASSIGNED_NEW_MESSAGE_PUSH": "Enviar notificaciones push cuando se crea un nuevo mensaje en una conversación asignada",
     "CONVERSATION_MENTION": "Enviar notificaciones push cuando sea mencionado en una conversación",
+    "CONVERSATION_PARTICIPATING_NEW_MESSAGE_PUSH": "Enviar notificaciones push cuando se crea un nuevo mensaje en una conversación participante",
     "CONVERSATION_CREATE_EMAIL": "Enviar notificaciones por email cuando se crea una nueva conversación",
     "CONVERSATION_ASSIGNEE_EMAIL": "Enviar notificaciones por email cuando se me ha asignado una conversación",
-    "CONVERSATION_ASSIGNED_NEW_MESSAGE_EMAIL": "Enviar notificaciones por email cuando se crea un nuevo mensaje en una conversación asignada"
+    "CONVERSATION_MENTION_EMAIL": "Enviar notificaciones por correo electrónico cuando sea mencionado en una conversación",
+    "CONVERSATION_ASSIGNED_NEW_MESSAGE_EMAIL": "Enviar notificaciones por email cuando se crea un nuevo mensaje en una conversación asignada",
+    "CONVERSATION_PARTICIPATING_NEW_MESSAGE_EMAIL": "Enviar notificaciones push cuando se crea un nuevo mensaje en una conversación participante"
   },
   "CONVERSATION_DETAILS": {
     "TITLE": "Información de la conversación",
@@ -133,18 +170,44 @@
     "INITIATED_FROM": "Iniciado desde",
     "IP_ADDRESS": "Dirección IP"
   },
+  "CONVERSATION_PARTICIPANTS": {
+    "TITLE": "Participantes de la conversación",
+    "TOTAL_PARTICIPANTS_TEXT": "%{count} personas están participando.",
+    "TOTAL_PARTICIPANT_TEXT": "%{count} personas están participando.",
+    "NO_PARTICIPANTS_TEXT": "Nadie está participando!.",
+    "WATCH_CONVERSATION": "Abrir conversación",
+    "YOU_ARE_WATCHING": "Estás participando",
+    "NO_RECORDS_FOUND": "No se encontraron resultados",
+    "SELECT_PARTICIPANTS": "Seleccionar agentes",
+    "ADD_PARTICIPANTS": "Seleccionar participantes",
+    "REMAINING_PARTICIPANTS_TEXT": "otros",
+    "REMAINING_PARTICIPANT_TEXT": "otro"
+  },
   "CONTACT_ATTRIBUTES": {
     "TITLE": "Atributos de contacto"
   },
   "CONVERSATION_ACTION": {
     "TITLE": "Acciones"
   },
+  "CONVERSATION_TEAMS": {
+    "TITLE": "Asignar equipo",
+    "SELECT_TEAM": "Seleccionar equipo",
+    "NO_RESULT": "No se encontró ningún equipo"
+  },
   "CONVERSATION_LABELS": {
     "TITLE": "Etiquetas de conversación",
     "ADD_LABEL": "Añadir etiquetas",
     "EMPTY_LIST": "Por favor, añade etiquetas a tu cuenta",
     "NO_LABEL": "No hay etiquetas asignadas",
-    "UPDATE_LABEL": "Etiqueta actualizada correctamente"
+    "UPDATE_LABEL": "Etiqueta actualizada correctamente",
+    "SELECTED": "Seleccionado",
+    "NOT_SELECTED": "No hay etiquetas seleccionadas",
+    "NO_RESULT": "No se encontraron etiquetas"
+  },
+  "CONVERSATION_AGENTS": {
+    "TITLE": "Asignar un agente",
+    "SELECT_AGENT": "Seleccionar agente",
+    "NO_RESULT": "No se encontró ningún agente"
   },
   "AGENT": {
     "TITLE": "Seleccionar agente"
@@ -177,7 +240,7 @@
   },
   "BANNER": {
     "TWILIO_WHATSAPP": {
-      "TEXT": "Sólo puede responder a esta conversación utilizando un mensaje de plantilla debido a ",
+      "TEXT": "Solo puede responder a esta conversación usando un mensaje de plantilla debido a ",
       "HREF_TEXT": "Restricción de la ventana de mensajes de 24 horas",
       "HREF_LINK": "https://www.twilio.com/docs/whatsapp/tutorial/send-whatsapp-notification-messages-templates#sending-non-template-messages-within-a-24-hour-session"
     },

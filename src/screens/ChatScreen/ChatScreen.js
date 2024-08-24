@@ -1,32 +1,29 @@
-import React, { useEffect, useCallback } from 'react';
-import { Spinner, withStyles } from '@ui-kitten/components';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
+import { useTheme } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
+import { TabView, TabBar } from 'react-native-tab-view';
 import PropTypes from 'prop-types';
-import { View, SafeAreaView, SectionList } from 'react-native';
+import { SafeAreaView, AppState, useWindowDimensions, Keyboard } from 'react-native';
 import { StackActions } from '@react-navigation/native';
-import ChatMessage from './components/ChatMessage';
-import ChatMessageDate from './components/ChatMessageDate';
-import ReplyBox from './components/ReplyBox';
+
+import createStyles from './ChatScreen.style';
 import ChatHeader from './components/ChatHeader';
 import ChatHeaderLoader from './components/ChatHeaderLoader';
-import styles from './ChatScreen.style';
-import { openURL } from 'helpers/UrlHelper';
+import DashboardApp from './components/DashboardApp';
+import MessageList from './components/MessageList/MessageList';
 
-import { markNotificationAsRead } from 'actions/notification';
-import { getGroupedConversation, findUniqueMessages } from 'helpers';
-import { actions as CannedResponseActions } from 'reducer/cannedResponseSlice';
-import {
-  clearConversation,
-  selectors as conversationSelectors,
-  selectMessagesLoading,
-  selectAllMessagesFetched,
-} from 'reducer/conversationSlice';
+import { selectUser } from 'reducer/authSlice';
+import { actions as notificationsActions } from 'reducer/notificationSlice';
+import { dashboardAppSelector } from 'reducer/dashboardAppSlice';
+import { selectAllTypingUsers } from 'reducer/conversationTypingSlice';
+import { selectors as conversationSelectors } from 'reducer/conversationSlice.selector.js';
 import conversationActions from 'reducer/conversationSlice.action';
+import { getCurrentRouteName } from 'helpers/NavigationHelper';
+
+import { SCREENS } from 'constants';
+import i18n from 'i18n';
+
 const propTypes = {
-  eva: PropTypes.shape({
-    style: PropTypes.object,
-    theme: PropTypes.object,
-  }).isRequired,
   route: PropTypes.object,
   navigation: PropTypes.shape({
     navigate: PropTypes.func.isRequired,
@@ -36,19 +33,16 @@ const propTypes = {
   }).isRequired,
 };
 
-const ChatScreenComponent = ({ eva: { style }, navigation, route }) => {
+const ChatScreenComponent = ({ navigation, route }) => {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useDispatch();
-  const conversationTypingUsers = useSelector(state => state.conversation.conversationTypingUsers);
+  const layout = useWindowDimensions();
+  const [index, setIndex] = React.useState(0);
+  const conversationTypingUsers = useSelector(selectAllTypingUsers);
+  const [appState, setAppState] = useState(AppState.currentState);
 
-  const isFetching = useSelector(selectMessagesLoading);
-  const isAllMessagesFetched = useSelector(selectAllMessagesFetched);
-
-  const {
-    conversationId,
-    primaryActorId,
-    primaryActorType,
-    isConversationOpenedExternally = true,
-  } = route.params;
+  const { conversationId, primaryActorId, primaryActorType } = route.params;
 
   const conversation = useSelector(state =>
     conversationSelectors.getConversationById(state, conversationId),
@@ -58,12 +52,35 @@ const ChatScreenComponent = ({ eva: { style }, navigation, route }) => {
     conversationSelectors.getMessagesByConversationId(state, conversationId),
   );
 
+  const currentUser = useSelector(selectUser);
+
+  const dashboardApps = useSelector(dashboardAppSelector.selectAll);
+  const isDashboardAppsEmpty = dashboardApps?.length === 0;
+  const dashboardRoutes = [];
+  if (!isDashboardAppsEmpty) {
+    dashboardApps.forEach(element => {
+      dashboardRoutes.push({
+        key: element.id,
+        title: element.title,
+        route: 'DashboardRoute',
+        content: element.content,
+        conversation: conversation,
+        currentUser: currentUser,
+      });
+    });
+  }
+
+  const [routes] = React.useState([
+    { key: 'MessageRoute', title: i18n.t('CONVERSATION.MESSAGES'), route: 'MessageRoute' },
+    ...dashboardRoutes,
+  ]);
+
   const { meta: conversationMetaDetails = {} } = conversation || {};
 
   const lastMessageId = useCallback(() => {
     let beforeId = null;
     if (allMessages && allMessages.length) {
-      const [lastMessage] = allMessages;
+      const lastMessage = allMessages[allMessages.length - 1];
       const { id } = lastMessage;
       beforeId = id;
     }
@@ -71,41 +88,13 @@ const ChatScreenComponent = ({ eva: { style }, navigation, route }) => {
   }, [allMessages]);
 
   useEffect(() => {
-    dispatch(CannedResponseActions.index());
     dispatch(conversationActions.markMessagesAsRead({ conversationId }));
   }, [dispatch, conversationId]);
 
   useEffect(() => {
-    if (isConversationOpenedExternally) {
-      dispatch(clearConversation(conversationId));
-      loadConversation();
-    } else {
-      loadMessages();
-    }
-  }, [conversationId, isConversationOpenedExternally, loadConversation, loadMessages, dispatch]);
-
-  const loadConversation = useCallback(() => {
-    dispatch(conversationActions.fetchConversation({ conversationId }));
-  }, [conversationId, dispatch]);
-
-  const loadMessages = useCallback(async () => {
-    // Fetch conversation if not present
-    if (!conversation) {
-      loadConversation();
-    } else {
-      dispatch(
-        conversationActions.fetchPreviousMessages({
-          conversationId,
-          beforeId: lastMessageId(),
-        }),
-      );
-    }
-  }, [conversation, conversationId, dispatch, lastMessageId, loadConversation]);
-
-  useEffect(() => {
     if (primaryActorId && primaryActorType) {
       dispatch(
-        markNotificationAsRead({
+        notificationsActions.markNotificationAsRead({
           primaryActorId,
           primaryActorType,
         }),
@@ -113,17 +102,36 @@ const ChatScreenComponent = ({ eva: { style }, navigation, route }) => {
     }
   }, [conversationId, dispatch, primaryActorId, primaryActorType]);
 
-  const showAttachment = ({ type, dataUrl }) => {
-    if (type === 'image') {
-      navigation.navigate('ImageScreen', {
-        imageUrl: dataUrl,
-      });
-    } else {
-      openURL({ URL: dataUrl });
-    }
-  };
+  useEffect(() => {
+    loadMessages({ loadingMessagesForFirstTime: true });
+  }, [loadMessages]);
+
+  const loadMessages = useCallback(
+    async ({ loadingMessagesForFirstTime = false }) => {
+      const beforeId = loadingMessagesForFirstTime ? null : lastMessageId();
+      // Fetch conversation if not present and fetch previous messages, otherwise fetch previous messages
+      if (!conversation) {
+        await dispatch(conversationActions.fetchConversation({ conversationId }));
+        dispatch(
+          conversationActions.fetchPreviousMessages({
+            conversationId,
+            beforeId,
+          }),
+        );
+      } else {
+        dispatch(
+          conversationActions.fetchPreviousMessages({
+            conversationId,
+            beforeId,
+          }),
+        );
+      }
+    },
+    [conversation, conversationId, dispatch, lastMessageId],
+  );
 
   const onBackPress = () => {
+    Keyboard.dismiss();
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
@@ -131,27 +139,30 @@ const ChatScreenComponent = ({ eva: { style }, navigation, route }) => {
     }
   };
 
-  const onEndReached = ({ distanceFromEnd }) => {
-    const shouldFetchMoreMessages = !isAllMessagesFetched;
-    if (shouldFetchMoreMessages) {
-      loadMessages();
-    }
-  };
-
-  const renderMoreLoader = () => {
-    if (isFetching) {
-      return (
-        <View style={style.loadMoreSpinnerView}>
-          <Spinner size="medium" color="red" />
-        </View>
-      );
-    }
-    return null;
-  };
-
-  const renderMessage = item => (
-    <ChatMessage message={item.item} key={item.index} showAttachment={showAttachment} />
-  );
+  // Update messages list when app comes to foreground from background
+  useEffect(() => {
+    const appStateListener = AppState.addEventListener('change', nextAppState => {
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        const routeName = getCurrentRouteName();
+        if (routeName === SCREENS.CHAT) {
+          dispatch(
+            conversationActions.fetchPreviousMessages({
+              conversationId,
+            }),
+          );
+          dispatch(
+            conversationActions.updateConversation({
+              conversationId,
+            }),
+          );
+        }
+      }
+      setAppState(nextAppState);
+    });
+    return () => {
+      appStateListener?.remove();
+    };
+  }, [appState, conversationId, dispatch]);
 
   const showConversationDetails = () => {
     if (conversation) {
@@ -159,13 +170,47 @@ const ChatScreenComponent = ({ eva: { style }, navigation, route }) => {
     }
   };
 
-  const uniqueMessages = findUniqueMessages({ allMessages });
-  const groupedConversationList = getGroupedConversation({
-    conversations: uniqueMessages,
-  });
+  const dashboardScenes = {
+    // eslint-disable-next-line react/no-unstable-nested-components
+    MessageRoute: () => <MessageList loadMessages={loadMessages} conversationId={conversationId} />,
+  };
+  if (!isDashboardAppsEmpty) {
+    dashboardRoutes.forEach(item => {
+      dashboardScenes[item.key] = DashboardApp;
+    });
+  }
+
+  const renderScene = ({ route: tabRoute }) => {
+    if (tabRoute.route === 'MessageRoute') {
+      return <MessageList loadMessages={loadMessages} conversationId={conversationId} />;
+    }
+    if (tabRoute.route === 'DashboardRoute') {
+      return (
+        <DashboardApp
+          content={tabRoute.content}
+          conversation={tabRoute.conversation}
+          currentUser={tabRoute.currentUser}
+        />
+      );
+    }
+    return null;
+  };
+
+  const renderTabBar = props => (
+    <TabBar
+      {...props}
+      labelStyle={styles.tabLabel}
+      activeColor="#1F93FF"
+      inactiveColor="#8492a6"
+      indicatorStyle={styles.tabIndicator}
+      style={styles.tabBar}
+      tabStyle={styles.tabStyle}
+      scrollEnabled={true}
+    />
+  );
 
   return (
-    <SafeAreaView style={style.mainContainer}>
+    <SafeAreaView style={styles.mainContainer}>
       {conversation ? (
         <ChatHeader
           conversationId={conversationId}
@@ -173,40 +218,26 @@ const ChatScreenComponent = ({ eva: { style }, navigation, route }) => {
           conversationDetails={conversation}
           conversationMetaDetails={conversationMetaDetails}
           showConversationDetails={showConversationDetails}
+          hasDashboardApps={!isDashboardAppsEmpty}
           onBackPress={onBackPress}
         />
       ) : (
         <ChatHeaderLoader />
       )}
-
-      <View style={style.container} autoDismiss={false}>
-        <View style={style.chatView}>
-          {groupedConversationList.length ? (
-            <SectionList
-              keyboardShouldPersistTaps="never"
-              scrollEventThrottle={16}
-              inverted
-              onEndReached={onEndReached}
-              sections={groupedConversationList}
-              keyExtractor={(item, index) => item + index}
-              renderItem={renderMessage}
-              renderSectionFooter={({ section: { date } }) => <ChatMessageDate date={date} />}
-              style={style.chatContainer}
-              ListFooterComponent={renderMoreLoader}
-            />
-          ) : null}
-          {isFetching && !groupedConversationList.length && (
-            <View style={style.loadMoreSpinnerView}>
-              <Spinner size="medium" />
-            </View>
-          )}
-        </View>
-        <ReplyBox conversationId={conversationId} conversationDetails={conversation} />
-      </View>
+      {isDashboardAppsEmpty ? (
+        <MessageList loadMessages={loadMessages} conversationId={conversationId} />
+      ) : (
+        <TabView
+          renderTabBar={renderTabBar}
+          navigationState={{ index, routes }}
+          renderScene={renderScene}
+          onIndexChange={setIndex}
+          initialLayout={{ width: layout.width }}
+        />
+      )}
     </SafeAreaView>
   );
 };
 
 ChatScreenComponent.propTypes = propTypes;
-const ChatScreen = withStyles(ChatScreenComponent, styles);
-export default ChatScreen;
+export default ChatScreenComponent;

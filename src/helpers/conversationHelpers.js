@@ -1,4 +1,8 @@
 import { MESSAGE_STATUS, MESSAGE_TYPES } from 'constants';
+import DateHelper from './DateHelper';
+
+const groupBy = require('lodash.groupby');
+
 export const getUuid = () =>
   'xxxxxxxx4xxx'.replace(/[xy]/g, c => {
     // eslint-disable-next-line no-bitwise
@@ -23,42 +27,35 @@ export const applyFilters = (conversation, filters) => {
   return shouldFilter;
 };
 
-export function getUnreadCount(conversation) {
-  const unReadMessages = conversation.messages.filter(
-    chatMessage =>
-      chatMessage.created_at * 1000 > conversation.agent_last_seen_at * 1000 &&
-      chatMessage.message_type === 0 &&
-      chatMessage.private !== true,
-  );
-  const unReadCount = unReadMessages.length;
-  return unReadCount > 9 ? '9+' : unReadCount;
-}
-
 export const getInboxName = ({ inboxes, inboxId }) => {
   const inbox = inboxes.find(item => item.id === inboxId);
   return inbox ? inbox : {};
 };
 
-export function findLastMessage({ messages }) {
-  let [lastMessage] = messages.slice(-1);
-
-  if (lastMessage) {
-    const { content, created_at, attachments, message_type, private: isPrivate } = lastMessage;
-    return {
-      content,
-      created_at,
-      attachments,
-      message_type,
-      isPrivate,
-    };
+const getLastNonActivityMessage = (messageInStore, messageFromAPI) => {
+  // If both API value and store value for last non activity message
+  // are available, then return the latest one.
+  if (messageInStore && messageFromAPI) {
+    if (messageInStore.created_at >= messageFromAPI.created_at) {
+      return messageInStore;
+    }
+    return messageFromAPI;
   }
-  return {
-    content: '',
-    created_at: '',
-    attachments: [],
-    message_type: '',
-    isPrivate: false,
-  };
+
+  // Otherwise, return whichever is available
+  return messageInStore || messageFromAPI;
+};
+
+export function findLastMessage(m) {
+  let lastMessageIncludingActivity = m.messages[m.messages.length - 1];
+
+  const nonActivityMessages = m.messages.filter(message => message.message_type !== 2);
+  let lastNonActivityMessageInStore = nonActivityMessages[nonActivityMessages.length - 1];
+  let lastNonActivityMessageFromAPI = m.last_non_activity_message;
+  if (!lastNonActivityMessageInStore && !lastNonActivityMessageFromAPI) {
+    return lastMessageIncludingActivity;
+  }
+  return getLastNonActivityMessage(lastNonActivityMessageInStore, lastNonActivityMessageFromAPI);
 }
 
 export const findPendingMessageIndex = (conversation, message) => {
@@ -125,4 +122,105 @@ export const buildCreatePayload = ({
     };
   }
   return payload;
+};
+
+export const replaceMentionsWithUsernames = text => {
+  try {
+    // eslint-disable-next-line no-useless-escape
+    const regex = /\[@([^\]]+)\]\(mention:\/\/user\/\d+\/([^\)]+)\)/g;
+    const matches = text.matchAll(regex);
+    let result = text;
+    for (const match of matches) {
+      const [fullMatch, username] = match;
+      const replacement = `@${decodeURIComponent(username)}`;
+      result = result.replace(fullMatch, replacement);
+    }
+    return result;
+  } catch (error) {
+    return text;
+  }
+};
+
+export const findUniqueMessages = ({ allMessages }) => {
+  const completeMessages = []
+    .concat(allMessages)
+    .sort((a, b) => a.created_at - b.created_at)
+    .reverse();
+
+  const uniqueMessages = completeMessages.reduce((acc, current) => {
+    const x = acc.find(item => item.id === current.id);
+    if (!x) {
+      return acc.concat([current]);
+    } else {
+      return acc;
+    }
+  }, []);
+  return uniqueMessages;
+};
+
+export const getGroupedMessages = ({ messages }) => {
+  const conversationGroupedByDate = groupBy(Object.values(messages), message =>
+    new DateHelper(message.created_at).format(),
+  );
+  return Object.keys(conversationGroupedByDate).map(date => {
+    const groupedMessages = conversationGroupedByDate[date].map((message, index) => {
+      let showAvatar = false;
+      if (index === conversationGroupedByDate[date].length - 1) {
+        showAvatar = true;
+      } else {
+        const nextMessage = conversationGroupedByDate[date][index + 1];
+        const currentSender = message.sender ? message.sender.name : '';
+        const nextSender = nextMessage.sender ? nextMessage.sender.name : '';
+        showAvatar =
+          currentSender !== nextSender || message.message_type !== nextMessage.message_type;
+      }
+      return { showAvatar, ...message };
+    });
+
+    return {
+      data: groupedMessages,
+      date,
+    };
+  });
+};
+
+export const getTypingUsersText = ({ conversationId, conversationTypingUsers }) => {
+  const userList = conversationTypingUsers[conversationId];
+  const isAnyoneTyping = userList && userList.length !== 0;
+  if (isAnyoneTyping) {
+    const count = userList.length;
+    if (count === 1) {
+      const [user] = userList;
+      const { type } = user;
+      // Check user is typing
+      if (type === 'contact') {
+        return 'typing...';
+      }
+      return `${user.name.toString().replace(/^./, str => str.toUpperCase())} is typing...`;
+    }
+
+    if (count === 2) {
+      const [first, second] = userList;
+      return `${first.name.toString().replace(/^./, str => str.toUpperCase())} and ${second.name
+        .toString()
+        .replace(/^./, str => str.toUpperCase())} are typing...`;
+    }
+
+    const [user] = userList;
+    const rest = userList.length - 1;
+    return `${user.name
+      .toString()
+      .replace(/^./, str => str.toUpperCase())} and ${rest} others are typing...`;
+  }
+  return false;
+};
+
+export const extractConversationIdFromUrl = ({ url }) => {
+  try {
+    const conversationIdMatch = url.match(/\/conversations\/(\d+)/);
+    const conversationId = conversationIdMatch ? parseInt(conversationIdMatch[1]) : null;
+    return conversationId;
+  } catch (error) {
+    return null;
+  }
 };

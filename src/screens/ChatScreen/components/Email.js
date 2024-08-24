@@ -1,70 +1,50 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTheme } from '@react-navigation/native';
 import PropTypes from 'prop-types';
-import { Dimensions, useWindowDimensions } from 'react-native';
-import { WebView } from 'react-native-webview';
-import TableRenderer, { tableModel } from '@native-html/table-plugin';
-import HTML, { HTMLContentModel, HTMLElementModel } from 'react-native-render-html';
-const imagesMaxWidth = Dimensions.get('window').width;
-// import { sanitize } from './EmailParser';
-// import { sanitize } from 'lettersanitizer';
-// import { extract } from 'letterparser';
-const htmlProps = {
-  WebView,
-  renderers: {
-    table: TableRenderer,
-  },
-  renderersProps: {
-    table: {
-      computeContainerHeight() {
-        return null;
-      },
-    },
-  },
-  customHTMLElementModels: {
-    table: tableModel,
-    center: HTMLElementModel.fromCustomModel({
-      tagName: 'center',
-      contentModel: HTMLContentModel.block,
-    }),
-    font: HTMLElementModel.fromCustomModel({
-      tagName: 'font',
-      contentModel: HTMLContentModel.mixed,
-    }),
-    'o:p': HTMLElementModel.fromCustomModel({
-      tagName: 'o:p',
-      contentModel: HTMLContentModel.mixed,
-    }),
-  },
-  baseStyle: {
-    flex: 1,
-    color: '#3c4858',
-    fontSize: 14,
-  },
-  contentWidth: 200,
-  enableExperimentalMarginCollapsing: true,
-  imagesMaxWidth: { imagesMaxWidth },
-};
+import AutoHeightWebView from 'react-native-autoheight-webview';
+import { View, StyleSheet } from 'react-native';
 
 const propTypes = {
   emailContent: PropTypes.string,
 };
 
-const Email = ({ emailContent }) => {
-  // const sanitizedHtml = sanitize(emailContent, '', {
-  // rewriteExternalResources,
-  // rewriteExternalLinks,
-  // allowedSchemas,
-  // preserveCssPriority
-  // });
-
-  // const sanitizedHtml = sanitize(emailContent, '', {});
-  // console.log('emailContent', emailContent);
-
-  const { width } = useWindowDimensions();
-
-  return <HTML source={{ html: emailContent || '' }} {...htmlProps} contentWidth={width} />;
+const createStyles = theme => {
+  return StyleSheet.create({
+    container: {
+      width: '100%',
+      opacity: 0.99,
+      minHeight: 1,
+    },
+  });
 };
 
-Email.propTypes = propTypes;
+const EmailComponent = ({ emailContent }) => {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-export default React.memo(Email);
+  const FormattedEmail = emailContent.replace('height:100%;', '');
+  return (
+    <View>
+      <AutoHeightWebView
+        style={styles.container}
+        scrollEnabled={false}
+        customStyle={`
+        * {
+          font-family: system,-apple-system,".SFNSText-Regular","San Francisco",Roboto,"Segoe UI","Helvetica Neue","Lucida Grande",sans-serif;
+          font-size: 14px;
+        } 
+        img{
+          max-width: 100% !important;
+        }
+      `}
+        source={{
+          html: FormattedEmail,
+        }}
+        viewportContent={'width=device-width, user-scalable=no'}
+      />
+    </View>
+  );
+};
+
+EmailComponent.propTypes = propTypes;
+export default React.memo(EmailComponent);

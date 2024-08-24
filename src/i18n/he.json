@@ -67,17 +67,50 @@
     "ASSIGN": "הקצה שיחה",
     "FILE_SIZE_LIMIT": "הקובץ עובר את מגבלת 5MB לקבצים מצורפים",
     "SHARE": "Share conversation",
-    "CANCEL": "ביטול",
+    "DETAILS": "Details",
+    "LABELS": "Conversation labels",
+    "ASSIGNED_AGENT": "סוכן מוקצה",
+    "TEAM": "צוות",
     "PRIVATE_MSG_INPUT": "זה יהיה גלוי רק לסוכנים",
+    "SELF_ASSIGN": "Self assign conversation",
     "UN_ASSIGN": "שיחה שלא הוקצתה",
-    "MUTE_CONVERSATION": "Mute conversation",
-    "UNMUTE_CONVERSATION": "בטל השתקת שיחה",
-    "CONVERSATION_NOT_FOUND": "Could not fetch conversation"
+    "CONVERSATION_NOT_FOUND": "Could not fetch conversation",
+    "MARK_AS_PENDING": "סמן כממתין",
+    "SNOOZE_UNTIL": "השהה עד",
+    "SNOOZE_UNTIL_NEXT_REPLY": "עד תגובה הבאה",
+    "SNOOZE_UNTIL_TOMORROW": "עד מחר",
+    "SNOOZE_UNTIL_NEXT_WEEK": "עד שבוע הבא",
+    "SNOOZE": "Snooze conversation",
+    "CHANGE_PRIORITY": "Change priority",
+    "MESSAGES": "הודעות",
+    "UNDEFINED_VARIABLES_TITLE": "משתנים בלתי מזוהים",
+    "UNDEFINED_VARIABLES_CLOSE": "סגור",
+    "DELETE_MESSAGE_TITLE": "בטוחים שאתם רוצים למחוק את ההודעה הזו?",
+    "DELETE_MESSAGE_SUB_TITLE": "This action cannot be undone.",
+    "COPY_MESSAGE": "Message copied to clipboard",
+    "PRIORITY": {
+      "TITLE": "Priority",
+      "OPTIONS": {
+        "NONE": "כלום",
+        "URGENT": "Urgent",
+        "HIGH": "High",
+        "MEDIUM": "Medium",
+        "LOW": "Low"
+      },
+      "CHANGE_PRIORITY": {
+        "SELECT_PLACEHOLDER": "כלום",
+        "INPUT_PLACEHOLDER": "Select priority",
+        "NO_RESULTS": "לא נמצאו תוצאות",
+        "SUCCESSFUL": "Changed priority of conversation id %{conversationId} to %{priority}",
+        "FAILED": "Couldn't change priority. Please try again."
+      }
+    }
   },
   "FILTER": {
     "ALL_INBOXES": "All inboxes",
     "FILTER_BY_ASSIGNEE_TYPE": "Filter by assignee type",
     "FILTER_BY_CONVERSATION_STATUS": "Filter by conversation status",
+    "SORT_BY": "מיין לפי",
     "FILTER_BY_INBOX": "Filter by inbox",
     "HEADER_TITLE": "סינון שיחות",
     "CHOOSE_INBOX": "בחר בתיבת דואר נכנס",
@@ -91,13 +124,14 @@
   },
   "SETTINGS": {
     "HEADER_TITLE": "הגדרות",
-    "AVAILABILITY": "זמינות",
-    "NOTIFICATION": "הגדרות התראות",
-    "HELP": "עזרה",
-    "CHAT_WITH_US": "שוחח איתנו",
-    "LOG_OUT": "התנתק",
+    "SET_AVAILABILITY": "Set yourself as",
+    "PREFERENCES": "Preferences",
+    "ABOUT": "About",
+    "SUPPORT": "Support",
     "SWITCH_ACCOUNT": "החלף חשבון",
     "CHANGE_LANGUAGE": "שנה שפה",
+    "NOTIFICATION_PREFERENCES": "הגדרות התראות",
+    "LOGOUT": "התנתק",
     "SUBMIT": "שלח"
   },
   "NOTIFICATION": {
@@ -115,15 +149,18 @@
   },
   "NOTIFICATION_PREFERENCE": {
     "TITLE": "הגדרות התראות",
-    "EMAIL": "אימייל",
-    "PUSH": "התראות פוש",
+    "EMAIL": "התראות דוא\"ל",
+    "PUSH": "הודעות דחיפה (Push)",
     "CONVERSATION_CREATE_PUSH": "שלח התראת פוש כאשר נפתחת שיחה חדשה",
     "CONVERSATION_ASSIGNEE_PUSH": "שלח התראת פוש כאשר שיחה מוקצית עבורי",
     "CONVERSATION_ASSIGNED_NEW_MESSAGE_PUSH": "שלח התראת פוש כאשר יש הודעה חדשה בשיחה המוקצית עבורי",
     "CONVERSATION_MENTION": "Send push notifications when you are mentioned in a conversation",
+    "CONVERSATION_PARTICIPATING_NEW_MESSAGE_PUSH": "שלח הודעות דחיפה כאשר נוצרת הודעה חדשה בשיחה המיועדת עבורי",
     "CONVERSATION_CREATE_EMAIL": "שלח התראה באימייל כאשר נפתחת שיחה חדשה",
     "CONVERSATION_ASSIGNEE_EMAIL": "שלח התראה באימייל כאשר שיחה מוקצית עבורי",
-    "CONVERSATION_ASSIGNED_NEW_MESSAGE_EMAIL": "שלח התראה באימייל כאשר יש הודעה חדשה בשיחה המוקצית עבורי"
+    "CONVERSATION_MENTION_EMAIL": "שלח הודעות דחיפה כאשר אתה מוזכר בשיחה",
+    "CONVERSATION_ASSIGNED_NEW_MESSAGE_EMAIL": "שלח התראה באימייל כאשר יש הודעה חדשה בשיחה המוקצית עבורי",
+    "CONVERSATION_PARTICIPATING_NEW_MESSAGE_EMAIL": "שלח הודעות דחיפה כאשר נוצרת הודעה חדשה בשיחה המיועדת עבורי"
   },
   "CONVERSATION_DETAILS": {
     "TITLE": "Conversation Information",
@@ -133,18 +170,44 @@
     "INITIATED_FROM": "יזם מ",
     "IP_ADDRESS": "כתובת IP"
   },
+  "CONVERSATION_PARTICIPANTS": {
+    "TITLE": "משתתפים בשיחה",
+    "TOTAL_PARTICIPANTS_TEXT": "%{count} people are participating.",
+    "TOTAL_PARTICIPANT_TEXT": "%{count} person is participating.",
+    "NO_PARTICIPANTS_TEXT": "אף אחד לא משתתף!.",
+    "WATCH_CONVERSATION": "הצטרף לשיחה",
+    "YOU_ARE_WATCHING": "אתה משתתף",
+    "NO_RECORDS_FOUND": "לא נמצאו תוצאות",
+    "SELECT_PARTICIPANTS": "Select agents",
+    "ADD_PARTICIPANTS": "בחר משתתפים",
+    "REMAINING_PARTICIPANTS_TEXT": "others",
+    "REMAINING_PARTICIPANT_TEXT": "other"
+  },
   "CONTACT_ATTRIBUTES": {
     "TITLE": "Contact Attributes"
   },
   "CONVERSATION_ACTION": {
     "TITLE": "פעולות"
   },
+  "CONVERSATION_TEAMS": {
+    "TITLE": "שייך צוות",
+    "SELECT_TEAM": "בחר קבוצה",
+    "NO_RESULT": "No team found"
+  },
   "CONVERSATION_LABELS": {
     "TITLE": "תוויות שיחה",
     "ADD_LABEL": "הוסף תוויות",
     "EMPTY_LIST": "Please add labels to your account",
     "NO_LABEL": "No labels assigned",
-    "UPDATE_LABEL": "Label updated successfully"
+    "UPDATE_LABEL": "Label updated successfully",
+    "SELECTED": "Selected",
+    "NOT_SELECTED": "No labels selected",
+    "NO_RESULT": "לא נמצאו תוויות"
+  },
+  "CONVERSATION_AGENTS": {
+    "TITLE": "שייך סוכן",
+    "SELECT_AGENT": "בחר נציג",
+    "NO_RESULT": "No agent found"
   },
   "AGENT": {
     "TITLE": "בחר סוכן"

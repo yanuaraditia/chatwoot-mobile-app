@@ -1,66 +1,87 @@
-import React, { useEffect, useState } from 'react';
-import { withStyles } from '@ui-kitten/components';
+import React, { useMemo, useRef, useCallback, useEffect, useState } from 'react';
+import { useTheme } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
-import { SafeAreaView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView, Platform, ScrollView, Dimensions } from 'react-native';
 import Config from 'react-native-config';
+import { StackActions } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import DeviceInfo from 'react-native-device-info';
 import ChatWootWidget from '@chatwoot/react-native-widget';
 import { View, Image } from 'react-native';
-import UserAvatar from 'components/UserAvatar';
-import CustomText from 'components/Text';
-import { onLogOut } from 'actions/auth';
+import BottomSheetModal from 'components/BottomSheet/BottomSheet';
+import { useFocusEffect } from '@react-navigation/native';
+import settings from './constants/settings';
+import { LANGUAGES } from 'constants';
 import i18n from 'i18n';
 import images from 'constants/images';
-import styles from './SettingsScreen.style';
-import SettingsItem from './components/SettingsItem';
+import createStyles from './SettingsScreen.style';
 import { HELP_URL } from 'constants/url.js';
 import { openURL } from 'helpers/UrlHelper';
-import { SETTINGS_ITEMS } from 'constants';
-import HeaderBar from 'components/HeaderBar';
-import { getNotificationSettings } from 'actions/settings';
 import packageFile from '../../../package.json';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCurrentUserAvailabilityStatus } from '../../helpers';
-
+import { clearContacts } from 'reducer/contactSlice';
+import { actions as settingsActions } from 'reducer/settingsSlice';
 import AnalyticsHelper from 'helpers/AnalyticsHelper';
 import { ACCOUNT_EVENTS } from 'constants/analyticsEvents';
+import {
+  logout,
+  selectUser,
+  selectAccounts,
+  setAccount,
+  selectCurrentUserAvailability,
+} from 'reducer/authSlice';
+import { clearAllConversations } from 'reducer/conversationSlice';
+import { selectLocale, setLocale } from 'reducer/settingsSlice';
+
+import UserInformation from './components/UserInformation';
+import AvailabilityStatus from './components/AvailabilityStatus';
+import AccordionItem from './components/AccordionItem';
+import { Header, Text, Pressable, Icon } from 'components';
+
+// Bottom sheet
+import AccountsSelector from './components/AccountsSelector';
+import NotificationPreferenceSelector from './components/NotificationPreferenceSelector';
+import LanguageSelector from './components/LanguageSelector';
+
+const deviceHeight = Dimensions.get('window').height;
 
 const appName = DeviceInfo.getApplicationName();
 
 const propTypes = {
-  eva: PropTypes.shape({
-    style: PropTypes.object,
-    theme: PropTypes.object,
-  }).isRequired,
   navigation: PropTypes.shape({
-    navigate: PropTypes.func.isRequired,
+    dispatch: PropTypes.func.isRequired,
   }).isRequired,
-  onLogOut: PropTypes.func,
   getNotificationSettings: PropTypes.func,
 };
-const defaultProps = {
-  onLogOut: () => {},
-};
 
-const Settings = ({ eva: { theme, style } }) => {
+const SettingsScreen = () => {
+  const theme = useTheme();
+  const { colors } = theme;
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useDispatch();
-  const [showWidget, toggleWidget] = useState(false);
   const navigation = useNavigation();
-  const user = useSelector(store => store.auth.user);
-  const email = user ? user.email : '';
-  const accounts = user ? user.accounts : [];
-  const avatar_url = user ? user.avatar_url : '';
-  const name = user ? user.name : '';
-  const identifierHash = user ? user.identifier_hash : '';
+  const [showWidget, toggleWidget] = useState(false);
+  const {
+    name,
+    email,
+    avatar_url: avatarUrl,
+    identifier_hash: identifierHash,
+    account_id: activeAccountId,
+  } = useSelector(selectUser);
 
-  const availabilityStatus = getCurrentUserAvailabilityStatus({ user });
+  const availabilityStatus = useSelector(selectCurrentUserAvailability) || 'offline';
+
+  const accounts = useSelector(selectAccounts);
+  const activeAccountName = accounts.length
+    ? accounts.find(account => account.id === activeAccountId).name
+    : '';
+  const activeLocale = useSelector(selectLocale);
 
   const userDetails = {
     identifier: email,
     name,
-    avatar_url,
+    avatar_url: avatarUrl,
     email,
     identifier_hash: identifierHash,
   };
@@ -75,89 +96,219 @@ const Settings = ({ eva: { theme, style } }) => {
   };
 
   useEffect(() => {
-    dispatch(getNotificationSettings());
+    dispatch(settingsActions.getNotificationSettings());
   }, [dispatch]);
 
-  const onPressItem = async ({ itemName }) => {
-    switch (itemName) {
-      case 'language':
-        navigation.navigate('Language');
-        break;
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        closeSwitchAccountModal();
+      };
+    }, [closeSwitchAccountModal]),
+  );
 
-      case 'logout':
-        await AsyncStorage.removeItem('cwCookie');
-        dispatch(onLogOut());
-        break;
+  // Switch account bottom sheet
+  const switchAccountModal = useRef(null);
+  const switchAccountModalSnapPoints = useMemo(() => [deviceHeight - 210, deviceHeight - 210], []);
+  const toggleSwitchAccountModal = useCallback(() => {
+    switchAccountModal.current.present() || switchAccountModal.current?.dismiss();
+  }, []);
+  const closeSwitchAccountModal = useCallback(() => {
+    switchAccountModal.current?.dismiss();
+  }, []);
 
-      case 'switch-account':
-        navigation.navigate('Account', { accounts });
-        break;
+  // Notification Preferences bottom sheet
+  const notificationPreferencesModal = useRef(null);
+  const notificationPreferencesModalSnapPoints = useMemo(
+    () => [deviceHeight - 150, deviceHeight - 150],
+    [],
+  );
+  const toggleNotificationPreferencesModal = useCallback(() => {
+    notificationPreferencesModal.current.present() ||
+      notificationPreferencesModal.current?.dismiss();
+  }, []);
+  const closeNotificationPreferencesModal = useCallback(() => {
+    notificationPreferencesModal.current?.dismiss();
+  }, []);
 
-      case 'availability':
-        navigation.navigate('Availability');
-        break;
+  // Language bottom sheet
+  const changeLanguageModal = useRef(null);
+  const changeLanguageModalModalSnapPoints = useMemo(
+    () => [deviceHeight - 210, deviceHeight - 210],
+    [],
+  );
+  const toggleChangeLanguageModal = useCallback(() => {
+    changeLanguageModal.current.present() || changeLanguageModal.current?.dismiss();
+  }, []);
+  const closeChangeLanguageModal = useCallback(() => {
+    changeLanguageModal.current?.dismiss();
+  }, []);
 
-      case 'notification':
-        navigation.navigate('NotificationPreference', { accounts });
-        break;
-      case 'chat_with_us':
-        AnalyticsHelper.track(ACCOUNT_EVENTS.OPEN_SUPPORT);
-        toggleWidget(true);
-        break;
+  const onChangeAccount = useCallback(
+    accountId => {
+      dispatch(clearContacts());
+      dispatch(clearAllConversations());
+      dispatch(setAccount(accountId));
+      navigation.dispatch(StackActions.replace('Tab'));
+      closeSwitchAccountModal();
+    },
+    [dispatch, navigation, closeSwitchAccountModal],
+  );
 
-      case 'help':
-        openURL({ URL: HELP_URL });
-        break;
+  const onChangeLanguage = useCallback(
+    locale => {
+      dispatch(setLocale(locale));
+      navigation.dispatch(StackActions.replace('Tab'));
+      closeChangeLanguageModal();
+    },
+    [closeChangeLanguageModal, navigation, dispatch],
+  );
 
+  const activeValue = item => {
+    switch (item.routeName) {
+      case 'SwitchAccount':
+        return activeAccountName;
+      case 'ChangeLanguage':
+        return LANGUAGES[activeLocale];
       default:
-        break;
+        return null;
     }
   };
 
-  let settingsMenu =
-    accounts && accounts.length > 1
-      ? SETTINGS_ITEMS
-      : SETTINGS_ITEMS.filter(e => e.itemName !== 'switch-account');
-
-  settingsMenu =
-    appName === 'Chatwoot' ? SETTINGS_ITEMS : SETTINGS_ITEMS.filter(e => e.itemName !== 'help');
+  const onClickLogout = useCallback(async () => {
+    await AsyncStorage.removeItem('cwCookie');
+    dispatch(logout());
+  }, [dispatch]);
 
   return (
-    <SafeAreaView style={style.container}>
-      <HeaderBar title={i18n.t('SETTINGS.HEADER_TITLE')} />
-      <ScrollView>
-        <View style={style.profileContainer}>
-          <UserAvatar
-            userName={name}
-            thumbnail={avatar_url}
-            defaultBGColor={theme['color-primary-default']}
-            availabilityStatus={availabilityStatus}
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+      <Header headerText={i18n.t('SETTINGS.HEADER_TITLE')} />
+      <ScrollView contentContainerStyle={styles.itemsContainer}>
+        <UserInformation
+          name={name}
+          email={email}
+          thumbnail={avatarUrl}
+          status={availabilityStatus}
+        />
+        <View style={styles.separatorView}>
+          <View style={styles.separator}>
+            <Text bold sm color={colors.textDark}>
+              {i18n.t('SETTINGS.SET_AVAILABILITY')}
+            </Text>
+          </View>
+          <AvailabilityStatus status={availabilityStatus} />
+        </View>
+        <View style={styles.separatorView}>
+          <View style={styles.separator}>
+            <Text bold sm color={colors.textDark}>
+              {i18n.t('SETTINGS.PREFERENCES')}
+            </Text>
+          </View>
+          <View style={styles.accordionItemWrapper}>
+            {settings.preferencesSections.map((item, index) => (
+              <AccordionItem
+                key={item.title}
+                leftIcon={item.leftIcon}
+                title={item.title}
+                rightIcon={item.rightIcon}
+                routeName={item.routeName}
+                activeValue={activeValue(item)}
+                onPress={async () => {
+                  if (item.routeName === 'SwitchAccount') {
+                    toggleSwitchAccountModal();
+                  }
+                  if (item.routeName === 'NotificationPreferences') {
+                    toggleNotificationPreferencesModal();
+                  }
+                  if (item.routeName === 'ChangeLanguage') {
+                    toggleChangeLanguageModal();
+                  }
+                }}
+              />
+            ))}
+          </View>
+          <BottomSheetModal
+            bottomSheetModalRef={switchAccountModal}
+            initialSnapPoints={switchAccountModalSnapPoints}
+            showHeader
+            headerTitle={i18n.t('SETTINGS.SWITCH_ACCOUNT')}
+            closeFilter={closeSwitchAccountModal}
+            children={
+              <AccountsSelector
+                accounts={accounts}
+                activeValue={activeAccountId}
+                colors={colors}
+                onPress={onChangeAccount}
+              />
+            }
           />
-          <View style={style.detailsContainer}>
-            <CustomText style={style.nameLabel}>{name}</CustomText>
-            <CustomText style={style.emailLabel}>{email}</CustomText>
+          <BottomSheetModal
+            bottomSheetModalRef={notificationPreferencesModal}
+            initialSnapPoints={notificationPreferencesModalSnapPoints}
+            showHeader
+            headerTitle={i18n.t('SETTINGS.NOTIFICATION_PREFERENCES')}
+            closeFilter={closeNotificationPreferencesModal}
+            children={<NotificationPreferenceSelector colors={colors} />}
+          />
+          <BottomSheetModal
+            bottomSheetModalRef={changeLanguageModal}
+            initialSnapPoints={changeLanguageModalModalSnapPoints}
+            showHeader
+            headerTitle={i18n.t('SETTINGS.CHANGE_LANGUAGE')}
+            closeFilter={closeChangeLanguageModal}
+            children={
+              <LanguageSelector
+                activeValue={activeLocale}
+                colors={colors}
+                onPress={onChangeLanguage}
+              />
+            }
+          />
+        </View>
+        <View style={styles.separatorView}>
+          <View style={styles.separator}>
+            <Text bold sm color={colors.textDark}>
+              {i18n.t('SETTINGS.SUPPORT')}
+            </Text>
+          </View>
+          <View style={styles.accordionItemWrapper}>
+            {settings.supportSection.map((item, index) => (
+              <AccordionItem
+                key={item.title}
+                leftIcon={item.leftIcon}
+                title={item.title}
+                rightIcon={item.rightIcon}
+                routeName={item.routeName}
+                onPress={() => {
+                  if (item.routeName === 'ReadDocs') {
+                    openURL({ URL: HELP_URL });
+                  }
+                  if (item.routeName === 'ChatWithUs') {
+                    AnalyticsHelper.track(ACCOUNT_EVENTS.OPEN_SUPPORT);
+                    toggleWidget(true);
+                  }
+                }}
+              />
+            ))}
           </View>
         </View>
-        <View style={style.itemListView}>
-          {settingsMenu.map((item, index) => (
-            <SettingsItem
-              key={item.text}
-              text={i18n.t(`SETTINGS.${item.text}`)}
-              checked={item.checked}
-              iconSize={item.iconSize}
-              itemType={item.itemType}
-              iconName={item.iconName}
-              itemName={item.itemName}
-              onPressItem={onPressItem}
-            />
-          ))}
+        <View style={styles.separatorView}>
+          <View style={styles.aboutView}>
+            <Image style={styles.aboutImage} source={images.appLogo} />
+          </View>
+          <View style={styles.appDescriptionView}>
+            <Text color={colors.textLight} xs medium style={styles.appDescriptionText}>
+              {`Version ${packageFile.version}`}
+            </Text>
+          </View>
         </View>
-        <View style={style.aboutView}>
-          <Image style={style.aboutImage} source={images.appLogo} />
-        </View>
-
-        <View style={style.appDescriptionView}>
-          <CustomText style={style.appDescriptionText}>{`v${packageFile.version}`}</CustomText>
+        <View style={styles.logoutSection}>
+          <Pressable style={styles.logoutButton} onPress={onClickLogout}>
+            <Icon icon="power-outline" color={colors.textDark} size={16} />
+            <Text medium sm color={colors.textDark} style={styles.logoutText}>
+              {i18n.t('SETTINGS.LOGOUT')}
+            </Text>
+          </Pressable>
         </View>
         {!!Config.CHATWOOT_WEBSITE_TOKEN && !!Config.CHATWOOT_BASE_URL && !!showWidget && (
           <ChatWootWidget
@@ -175,8 +326,5 @@ const Settings = ({ eva: { theme, style } }) => {
   );
 };
 
-Settings.propTypes = propTypes;
-Settings.defaultProps = defaultProps;
-
-const SettingsScreen = withStyles(Settings, styles);
+SettingsScreen.propTypes = propTypes;
 export default SettingsScreen;

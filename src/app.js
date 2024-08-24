@@ -3,16 +3,13 @@ import { Provider } from 'react-redux';
 import { Alert, BackHandler, StatusBar, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PersistGate } from 'redux-persist/integration/react';
-import * as eva from '@eva-design/eva';
-import { ApplicationProvider, IconRegistry } from '@ui-kitten/components';
-import { EvaIconsPack } from '@ui-kitten/eva-icons';
 import * as Sentry from '@sentry/react-native';
-import { theme } from './theme';
 import NoNetworkBar from 'components/NoNetworkBar';
 import ErrorHelper from 'helpers/ErrorHelper';
 import Router from './router';
 import { store, persistor } from './store';
 import i18n from './i18n/index';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -48,18 +45,16 @@ const Chatwoot = () => {
   return (
     <GestureHandlerRootView style={styles.container}>
       <React.Fragment>
-        <StatusBar barStyle="dark-content" />
-        <IconRegistry icons={EvaIconsPack} />
-        <ApplicationProvider {...eva} theme={theme}>
-          <Provider store={store}>
-            <PersistGate loading={null} persistor={persistor}>
-              <NoNetworkBar />
-              <Router />
-            </PersistGate>
-          </Provider>
-        </ApplicationProvider>
+        <StatusBar barStyle="dark-content" backgroundColor="white" />
+        <Provider store={store}>
+          <PersistGate loading={null} persistor={persistor}>
+            <NoNetworkBar />
+            <Router />
+          </PersistGate>
+        </Provider>
       </React.Fragment>
     </GestureHandlerRootView>
   );
 };
-export default Sentry.wrap(Chatwoot);
+
+export default !__DEV__ ? Sentry.wrap(Chatwoot) : Chatwoot;

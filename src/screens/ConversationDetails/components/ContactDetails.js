@@ -1,38 +1,47 @@
-import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import i18n from 'i18n';
+import { StyleSheet, View } from 'react-native';
+import { useTheme } from '@react-navigation/native';
 import PropTypes from 'prop-types';
-import { Icon, withStyles } from '@ui-kitten/components';
-import CustomText from 'src/components/Text';
+import { Icon, Text, Pressable } from 'components';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 import { openNumber } from 'src/helpers/UrlHelper';
-import { View } from 'react-native-animatable';
+import { showToast } from 'helpers/ToastHelper';
 
-const styles = theme => ({
-  detailsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 10,
-  },
-
-  label: {
-    paddingLeft: 8,
-    fontSize: theme['font-size-small'],
-    color: theme['text-light-color'],
-  },
-});
+const createStyles = theme => {
+  const { spacing } = theme;
+  return StyleSheet.create({
+    detailsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      marginTop: spacing.smaller,
+      marginBottom: spacing.micro,
+      gap: spacing.micro,
+    },
+    copyButton: {
+      marginLeft: spacing.micro,
+    },
+  });
+};
 
 const propTypes = {
-  eva: PropTypes.shape({
-    style: PropTypes.object,
-    theme: PropTypes.object,
-  }).isRequired,
   type: PropTypes.string,
   value: PropTypes.string,
   iconName: PropTypes.string,
 };
 
-const ContactDetails = ({ type, value, iconName, eva: { style, theme } }) => {
+const ContactDetails = ({ type, value, iconName }) => {
+  const theme = useTheme();
+  const { colors } = theme;
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  // Avoid rendering if the value is empty or whitespace (Case: identifier)
+  if (!value || value === ' ') {
+    return null;
+  }
+
   const onClickOpen = () => {
     if (type === 'phoneNumber') {
       openNumber({ phoneNumber: value });
@@ -40,26 +49,29 @@ const ContactDetails = ({ type, value, iconName, eva: { style, theme } }) => {
       return;
     }
   };
+
+  const showCopyButton = type === 'phoneNumber' || type === 'email';
+
+  const onClickCopy = () => {
+    Clipboard.setString(value);
+    showToast({ message: i18n.t('CONVERSATION_DETAILS.CLIPBOARD_SUCCESS') });
+  };
   return (
-    <React.Fragment>
-      <TouchableOpacity>
-        <View style={style.detailsContainer}>
-          <Icon
-            name={iconName}
-            height={14}
-            width={14}
-            fill={theme['color-primary-default']}
-            onPress={() => onClickOpen()}
-          />
-          <CustomText style={style.label} onPress={() => onClickOpen()}>
-            {value}
-          </CustomText>
-        </View>
-      </TouchableOpacity>
-    </React.Fragment>
+    <View style={styles.detailsContainer}>
+      <Icon icon={iconName} color={colors.primaryColor} size={14} />
+      <Pressable onPress={() => onClickOpen()}>
+        <Text sm color={colors.textDark}>
+          {value}
+        </Text>
+      </Pressable>
+      {showCopyButton && (
+        <Pressable style={styles.copyButton} onPress={() => onClickCopy()}>
+          <Icon icon="copy-outline" color={colors.text} size={14} />
+        </Pressable>
+      )}
+    </View>
   );
 };
 
 ContactDetails.propTypes = propTypes;
-
-export default withStyles(ContactDetails, styles);
+export default ContactDetails;

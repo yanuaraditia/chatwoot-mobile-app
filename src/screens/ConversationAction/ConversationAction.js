@@ -1,106 +1,154 @@
 /* eslint-disable react/prop-types */
-import React from 'react';
-import { withStyles } from '@ui-kitten/components';
-import { getConversationUrl } from 'src/helpers/UrlHelper';
-import { Share } from 'react-native';
+import React, { useMemo } from 'react';
+import { useTheme } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
-import styles from './ConversationAction.style';
+import { View, StyleSheet } from 'react-native';
 import ConversationActionItem from '../../components/ConversationActionItem';
-import i18n from '../../i18n';
+import i18n from 'i18n';
+import { selectUserId } from 'reducer/authSlice';
+import { inboxAgentSelectors } from 'reducer/inboxAgentsSlice';
+import differenceInHours from 'date-fns/differenceInHours';
+import { CONVERSATION_STATUS } from 'src/constants/index';
 
-const ConversationActionComponent = ({ eva: { style }, onPressAction, conversationDetails }) => {
-  const agents = useSelector(state => state.agent.data);
+const createStyles = theme => {
+  const { spacing } = theme;
+  return StyleSheet.create({
+    actionSheetView: {
+      paddingBottom: spacing.micro,
+      paddingTop: spacing.micro,
+      flexDirection: 'column',
+    },
+  });
+};
 
+const ConversationActionComponent = ({ onPressAction, conversationDetails }) => {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { colors } = theme;
+  const agents = useSelector(state => inboxAgentSelectors.inboxAssignedAgents(state));
+  const userId = useSelector(selectUserId);
   const {
     meta: { assignee, team },
   } = conversationDetails;
 
-  let assignedAgent = null;
+  let assignedAgent = {
+    name: '',
+    thumbnail: '',
+  };
   if (assignee) {
     assignedAgent = agents.find(item => item.id === assignee.id);
-  } else {
-    assignedAgent = {
-      name: 'Select Agent',
-      thumbnail: '',
-    };
   }
-  const onShare = async () => {
-    const { id, account_id } = conversationDetails;
-    try {
-      const conversationURL = await getConversationUrl({
-        conversationId: id,
-        accountId: account_id,
-      });
+  const shouldShowSelfAssign = !assignee || (assignee && assignee.id !== userId);
 
-      await Share.share({
-        url: conversationURL,
-      });
-    } catch (error) {
-      //error
+  const isSnoozed = conversationDetails.status === CONVERSATION_STATUS.SNOOZED;
+
+  const snoozeDisplayText = () => {
+    const { snoozed_until: snoozedUntil } = conversationDetails;
+    if (snoozedUntil) {
+      // When the snooze is applied, it schedules the unsnooze event to next day/week 9AM.
+      // By that logic if the time difference is less than or equal to 24 + 9 hours we can consider it tomorrow.
+      const MAX_TIME_DIFFERENCE = 33;
+      const isSnoozedUntilTomorrow =
+        differenceInHours(new Date(snoozedUntil), new Date()) <= MAX_TIME_DIFFERENCE;
+      return isSnoozedUntilTomorrow
+        ? i18n.t('CONVERSATION.SNOOZE_UNTIL_TOMORROW')
+        : i18n.t('CONVERSATION.SNOOZE_UNTIL_NEXT_WEEK');
     }
+    return i18n.t('CONVERSATION.SNOOZE_UNTIL_NEXT_REPLY');
   };
 
-  const { muted } = conversationDetails;
+  const priority = conversationDetails.priority
+    ? conversationDetails.priority.toUpperCase()
+    : 'NONE';
 
   return (
     <React.Fragment>
-      <ConversationActionItem
-        onPressItem={onPressAction}
-        text="Assignee"
-        itemType="assignee"
-        name={assignedAgent.name}
-        thumbnail={assignedAgent.thumbnail}
-        availabilityStatus={assignedAgent.availability_status}
-      />
-      {assignee && (
+      <View style={styles.actionSheetView}>
         <ConversationActionItem
           onPressItem={onPressAction}
-          text={i18n.t('CONVERSATION.UN_ASSIGN')}
-          itemType="unassign"
+          text={i18n.t('CONVERSATION.ASSIGNED_AGENT')}
+          itemType="assignee"
+          iconName="people-outline"
+          colors={colors}
+          name={assignedAgent?.name ? assignedAgent.name : i18n.t('AGENT.TITLE')}
+          thumbnail={assignedAgent?.thumbnail}
+          availabilityStatus={assignedAgent?.availability_status}
         />
-      )}
 
-      <ConversationActionItem
-        onPressItem={onPressAction}
-        text="Team"
-        itemType="team"
-        name={team ? team.name : 'Select Team'}
-      />
-
-      <ConversationActionItem
-        onPressItem={onPressAction}
-        text={i18n.t('CONVERSATION_LABELS.TITLE')}
-        itemType="label"
-      />
-
-      {!muted ? (
         <ConversationActionItem
           onPressItem={onPressAction}
-          text={i18n.t('CONVERSATION.MUTE_CONVERSATION')}
-          itemType="mute_conversation"
+          text={i18n.t('CONVERSATION.TEAM')}
+          itemType="team"
+          colors={colors}
+          iconName="people-team-outline"
+          name={team ? team.name : 'Select Team'}
         />
-      ) : (
+
         <ConversationActionItem
           onPressItem={onPressAction}
-          text={i18n.t('CONVERSATION.UNMUTE_CONVERSATION')}
-          itemType="unmute_conversation"
+          iconName="tag-outline"
+          text={i18n.t('CONVERSATION.LABELS')}
+          colors={colors}
+          itemType="label"
         />
-      )}
 
-      <ConversationActionItem
-        onPressItem={onShare}
-        text={i18n.t('CONVERSATION.SHARE')}
-        itemType="share"
-      />
+        {!isSnoozed && (
+          <ConversationActionItem
+            onPressItem={onPressAction}
+            iconName="snooze-outline"
+            text={i18n.t('CONVERSATION.SNOOZE')}
+            colors={colors}
+            name={isSnoozed ? snoozeDisplayText() : ''}
+            itemType="snooze"
+          />
+        )}
 
-      <ConversationActionItem
-        onPressItem={onPressAction}
-        text={i18n.t('CONVERSATION.CANCEL')}
-        itemType="cancel"
-      />
+        <ConversationActionItem
+          onPressItem={onPressAction}
+          iconName="priority-outline"
+          text={i18n.t('CONVERSATION.CHANGE_PRIORITY')}
+          colors={colors}
+          name={i18n.t(`CONVERSATION.PRIORITY.OPTIONS.${priority}`)}
+          itemType="priority"
+        />
+
+        {shouldShowSelfAssign && (
+          <ConversationActionItem
+            onPressItem={onPressAction}
+            iconName="person-arrow-left-outline"
+            text={i18n.t('CONVERSATION.SELF_ASSIGN')}
+            colors={colors}
+            itemType="self_assign"
+          />
+        )}
+        {assignee && (
+          <ConversationActionItem
+            onPressItem={onPressAction}
+            iconName="person-arrow-right-outline"
+            colors={colors}
+            text={i18n.t('CONVERSATION.UN_ASSIGN')}
+            itemType="unassign"
+          />
+        )}
+
+        <ConversationActionItem
+          onPressItem={onPressAction}
+          iconName="book-clock-outline"
+          text={i18n.t('CONVERSATION.MARK_AS_PENDING')}
+          colors={colors}
+          itemType="pending"
+        />
+
+        <ConversationActionItem
+          onPressItem={onPressAction}
+          iconName="share-outline"
+          text={i18n.t('CONVERSATION.SHARE')}
+          colors={colors}
+          itemType="share"
+        />
+      </View>
     </React.Fragment>
   );
 };
 
-const ConversationAction = withStyles(ConversationActionComponent, styles);
-export default ConversationAction;
+export default ConversationActionComponent;

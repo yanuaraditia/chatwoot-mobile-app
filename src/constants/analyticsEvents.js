@@ -14,6 +14,11 @@ export const CONVERSATION_EVENTS = Object.freeze({
   REFRESH_CONVERSATIONS: 'Refreshed conversations',
   CLEAR_FILTERS: 'Clear conversation filters',
   APPLY_FILTER: 'Conversation filter applied',
+  SELF_ASSIGN_CONVERSATION: 'Self assigned conversation',
+  MARK_AS_UNREAD: 'Mark as unread',
+  MARK_AS_READ: 'Mark as read',
+  ENABLE_PUSH_NOTIFICATION: 'Enabled push notification',
+  CONVERSATION_SHARE: 'Shared conversation url',
 });
 
 export const ACCOUNT_EVENTS = Object.freeze({
@@ -23,6 +28,8 @@ export const ACCOUNT_EVENTS = Object.freeze({
   CHANGE_LANGUAGE: 'Changed language',
   OPEN_SUPPORT: 'Opened help support',
   CHANGE_URL: 'Changed URL',
+  ENABLE_PUSH_NOTIFICATION: 'Enabled push notification',
+  FORGOT_PASSWORD: 'Requested forgot password',
 });
 
 export const LABEL_EVENTS = Object.freeze({

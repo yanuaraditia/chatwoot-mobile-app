@@ -1,350 +1,221 @@
-import React, { Component } from 'react';
-import { withStyles } from '@ui-kitten/components';
-import { connect } from 'react-redux';
+import React, { useEffect, useMemo, useRef, useCallback } from 'react';
+import { useTheme } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
 import PropTypes from 'prop-types';
-import { ScrollView } from 'react-native';
+import { ScrollView, Dimensions, SafeAreaView } from 'react-native';
 import { View } from 'react-native';
+import i18n from 'i18n';
 
-import UserAvatar from '../../components/UserAvatar';
-import CustomText from '../../components/Text';
-
-import i18n from '../../i18n';
-
-import styles from './ConversationDetailsScreen.style';
-
-import HeaderBar from '../../components/HeaderBar';
-import ConversationDetailsItem from '../../components/ConversationDetailsItem';
+import { Text, UserAvatar, Header } from 'components';
+import createStyles from './ConversationDetailsScreen.style';
 import SocialProfileIcons from './components/SocialProfileIcons';
-
-import { getAllCustomAttributes } from 'actions/attributes';
-
 import ContactDetails from './components/ContactDetails';
 import LabelView from 'src/screens/ConversationDetails/components/LabelView';
+import ConversationAttributes from './components/ConversationAttributes';
+import ConversationParticipants from './components/ConversationParticipants';
+import ContactAttributes from './components/ContactAttributes';
+import { actions as customAttributeActions } from 'reducer/customAttributeSlice';
+import { actions as conversationWatchersActions } from 'reducer/conversationWatchersSlice';
 
-class ConversationDetailsComponent extends Component {
-  state = { settingsMenu: [] };
-  static propTypes = {
-    eva: PropTypes.shape({
-      style: PropTypes.object,
-      theme: PropTypes.object,
-    }).isRequired,
-    user: PropTypes.shape({
-      name: PropTypes.string,
-      email: PropTypes.string,
-      avatar_url: PropTypes.string,
-      accounts: PropTypes.array,
-    }).isRequired,
-    navigation: PropTypes.shape({
-      navigate: PropTypes.func.isRequired,
-      goBack: PropTypes.func.isRequired,
-    }).isRequired,
-    route: PropTypes.object,
-    attributes: PropTypes.array.isRequired,
-    getAllCustomAttributes: PropTypes.func,
-  };
+// Bottom sheet items
+const deviceHeight = Dimensions.get('window').height;
+import BottomSheetModal from 'components/BottomSheet/BottomSheet';
+import LabelConversationItems from 'src/screens/ChatScreen/components/ConversationLabels';
 
-  static defaultProps = {
-    user: { email: null, name: null },
-    attributes: [],
-  };
+const ConversationDetailsScreen = ({ navigation, route }) => {
+  const theme = useTheme();
+  const { colors } = theme;
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const dispatch = useDispatch();
 
-  componentDidMount = () => {
-    this.props.getAllCustomAttributes();
-  };
-
-  onBackPress = () => {
-    const { navigation } = this.props;
+  const onBackPress = () => {
     navigation.goBack();
   };
 
-  renderConversationAttributes() {
-    const {
-      eva: { style },
-      route,
-      attributes,
-    } = this.props;
-    const { conversationDetails } = route.params;
-    const { additional_attributes: additionalAttributes } = conversationDetails;
-    const { meta } = conversationDetails;
-    const { sender } = meta;
-    if (!additionalAttributes) {
-      return null;
-    }
+  useEffect(() => {
+    dispatch(customAttributeActions.getAllCustomAttributes());
+    dispatch(conversationWatchersActions.show({ conversationId }));
+  }, [dispatch, conversationId]);
 
-    const { custom_attributes: conversationAttributes } = conversationDetails;
+  const { conversationDetails } = route.params;
 
-    const {
-      browser: {
-        browser_name: browserName,
-        browser_version: browserVersion,
-        platform_name: platformName,
-        platform_version: platformVersion,
-      } = {},
-      initiated_at: { timestamp } = {},
-      referer,
-    } = additionalAttributes;
-    const { additional_attributes: { created_at_ip: createdAtIp } = {} } = sender;
+  const {
+    meta: {
+      sender: {
+        additional_attributes: { city, country },
+        name,
+        thumbnail,
+        email,
+        identifier,
+        phone_number: phoneNumber,
+        additional_attributes: senderAdditionalInfo = {},
+      },
+    },
+  } = conversationDetails;
 
-    const displayKeys = [
-      {
-        key: 'timestamp',
-        value: timestamp,
-        title: i18n.t('CONVERSATION_DETAILS.INITIATED_AT'),
-      },
-      {
-        key: 'referer',
-        value: referer,
-        title: i18n.t('CONVERSATION_DETAILS.INITIATED_FROM'),
-      },
-      {
-        key: 'browserName',
-        value:
-          browserName && browserVersion !== undefined ? `${browserName} ${browserVersion}` : null,
-        title: i18n.t('CONVERSATION_DETAILS.BROWSER'),
-      },
-      {
-        key: 'platformName',
-        value:
-          platformName && platformVersion !== undefined
-            ? `${platformName} ${platformVersion}`
-            : null,
-        title: i18n.t('CONVERSATION_DETAILS.OPERATING_SYSTEM'),
-      },
-      {
-        key: 'createdAtIp',
-        value: createdAtIp,
-        title: i18n.t('CONVERSATION_DETAILS.IP_ADDRESS'),
-      },
-    ];
+  const { id: conversationId } = conversationDetails;
 
-    const displayItems = displayKeys
-      .map(({ key, value, title }) =>
-        value ? <ConversationDetailsItem key={key} title={title} value={value} type={key} /> : null,
-      )
-      .filter(displayItem => !!displayItem);
+  const {
+    social_profiles: socialProfiles = {},
+    company_name: companyName,
+    location,
+  } = senderAdditionalInfo;
 
-    const getConversationAttributes = () => {
-      return attributes
-        .filter(attribute => attribute.attribute_model === 'conversation_attribute')
-        .map(attribute => {
-          const { attribute_key: attributeKey, attribute_display_name: displayName } = attribute;
-          if (conversationAttributes[attributeKey] !== undefined) {
-            return (
-              <ConversationDetailsItem
-                title={displayName}
-                value={String(conversationAttributes[attributeKey])}
-                type={attributeKey}
+  const { facebook, twitter, linkedin, github } = socialProfiles;
+
+  const socialProfileTypes = [
+    {
+      key: 'facebook',
+      value: facebook,
+      iconName: 'brand-facebook',
+    },
+    {
+      key: 'twitter',
+      value: twitter,
+      iconName: 'brand-twitter',
+    },
+    {
+      key: 'linkedin',
+      value: linkedin,
+      iconName: 'brand-linkedin',
+    },
+    {
+      key: 'github',
+      value: github,
+      iconName: 'brand-github',
+    },
+  ];
+
+  const getSocialProfileValue = socialProfileTypes
+    .map(({ key, value, iconName }) =>
+      value ? <SocialProfileIcons key={key} type={key} value={value} iconName={iconName} /> : null,
+    )
+    .filter(profile => !!profile);
+
+  const contactDetails = [
+    {
+      key: 'email',
+      value: email,
+      iconName: 'mail-outline',
+    },
+    {
+      key: 'phoneNumber',
+      value: phoneNumber,
+      iconName: 'call-outline',
+    },
+    {
+      key: 'identifier',
+      value: identifier,
+      iconName: 'contact-identify-outline',
+    },
+    {
+      key: 'company',
+      value: companyName,
+      iconName: 'building-bank-outline',
+    },
+    {
+      key: 'location',
+      value:
+        location || city || country !== undefined
+          ? location || `${city}${city ? ',' : ''} ${country}`
+          : null,
+      iconName: 'map-outline',
+    },
+  ];
+
+  const getContactDetails = contactDetails
+    .map(({ key, value, iconName }) =>
+      value ? <ContactDetails key={key} type={key} value={value} iconName={iconName} /> : null,
+    )
+    .filter(details => !!details);
+
+  const labelActionModal = useRef(null);
+  const labelActionModalSnapPoints = useMemo(() => [deviceHeight - 120, deviceHeight - 120], []);
+  const toggleLabelActionModal = useCallback(() => {
+    labelActionModal.current.present() || labelActionModal.current?.dismiss();
+  }, []);
+  const closeLabelActionModal = useCallback(() => {
+    labelActionModal.current?.dismiss();
+  }, []);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <Header leftIcon="arrow-chevron-left-outline" onPressLeft={onBackPress} />
+      <ScrollView style={styles.container}>
+        <View style={styles.wrapper}>
+          <View style={styles.detailsWrap}>
+            <View style={styles.avatarContainer}>
+              <UserAvatar
+                thumbnail={thumbnail}
+                userName={name}
+                size={76}
+                fontSize={30}
+                defaultBGColor={colors.primary}
               />
-            );
-          }
-        });
-    };
-
-    const conversationAttributesHasValue = Object.keys(conversationAttributes).length > 0;
-
-    return (
-      <View>
-        {displayItems.length > 0 || conversationAttributesHasValue ? (
-          <View>
-            <View style={style.separationViewLabels} />
-            <CustomText style={style.itemListViewTitle}>
-              {i18n.t('CONVERSATION_DETAILS.TITLE')}
-            </CustomText>
-            <View style={style.itemListView}>
-              {displayItems}
-              {getConversationAttributes()}
+            </View>
+            <View>
+              <Text bold lg color={colors.textDark}>
+                {name}
+              </Text>
+            </View>
+            {senderAdditionalInfo.description ? (
+              <View style={styles.descriptionContainer}>
+                <Text regular sm color={colors.textDark} style={styles.description}>
+                  {senderAdditionalInfo.description}
+                </Text>
+              </View>
+            ) : null}
+            <View style={styles.socialIconsContainer}>{getSocialProfileValue}</View>
+            <View>{getContactDetails}</View>
+          </View>
+          <View style={styles.separatorView}>
+            <View style={styles.separator}>
+              <Text bold sm color={colors.textDark}>
+                {i18n.t('CONVERSATION_LABELS.TITLE')}
+              </Text>
+            </View>
+            <View style={styles.accordionItemWrapper}>
+              <LabelView
+                conversationDetails={conversationDetails}
+                conversationId={conversationId}
+                openLabelsBottomSheet={toggleLabelActionModal}
+              />
             </View>
           </View>
-        ) : null}
-      </View>
-    );
-  }
-
-  renderContactAttributes() {
-    const {
-      eva: { style },
-      route,
-    } = this.props;
-    const { conversationDetails } = route.params;
-    const { meta } = conversationDetails;
-    const { sender } = meta;
-    const { custom_attributes: contactAttributes } = sender;
-
-    if (contactAttributes === {}) {
-      return null;
-    }
-
-    const contactAttributesHasValue = Object.keys(contactAttributes).length > 0;
-
-    return (
-      <View>
-        {contactAttributesHasValue ? (
-          <View>
-            <View style={style.separationView} />
-            <CustomText style={style.itemListViewTitle}>
-              {i18n.t('CONTACT_ATTRIBUTES.TITLE')}
-            </CustomText>
-            <View style={style.itemListView}>
-              {Object.keys(contactAttributes).map(key => {
-                return (
-                  <ConversationDetailsItem
-                    title={key}
-                    value={String(contactAttributes[key])}
-                    type={key}
-                  />
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-      </View>
-    );
-  }
-
-  render() {
-    const {
-      eva: { style, theme },
-      route,
-    } = this.props;
-    const { conversationDetails } = route.params;
-
-    const {
-      meta: {
-        sender: {
-          additional_attributes: { city, country },
-          name,
-          thumbnail,
-          email,
-          phone_number: phoneNumber,
-          additional_attributes: senderAdditionalInfo = {},
-        },
-        channel,
-      },
-    } = conversationDetails;
-
-    const { id: conversationId } = conversationDetails;
-
-    const {
-      social_profiles: socialProfiles = {},
-      company_name: companyName,
-      location,
-    } = senderAdditionalInfo;
-
-    const { facebook, twitter, linkedin, github } = socialProfiles;
-
-    const socialProfileTypes = [
-      {
-        key: 'facebook',
-        value: facebook,
-        iconName: 'facebook-outline',
-      },
-      {
-        key: 'twitter',
-        value: twitter,
-        iconName: 'twitter-outline',
-      },
-      {
-        key: 'linkedin',
-        value: linkedin,
-        iconName: 'linkedin-outline',
-      },
-      {
-        key: 'github',
-        value: github,
-        iconName: 'github-outline',
-      },
-    ];
-
-    const getSocialProfileValue = socialProfileTypes
-      .map(({ key, value, iconName }) =>
-        value ? (
-          <SocialProfileIcons key={key} type={key} value={value} iconName={iconName} />
-        ) : null,
-      )
-      .filter(profile => !!profile);
-
-    const contactDetails = [
-      {
-        key: 'email',
-        value: email,
-        iconName: 'email-outline',
-      },
-      {
-        key: 'phoneNumber',
-        value: phoneNumber,
-        iconName: 'phone-call-outline',
-      },
-      {
-        key: 'company',
-        value: companyName,
-        iconName: 'home-outline',
-      },
-      {
-        key: 'location',
-        value:
-          location || city || country !== undefined
-            ? location || `${city}${city ? ',' : ''} ${country}`
-            : null,
-        iconName: 'map-outline',
-      },
-    ];
-
-    const getContactDetails = contactDetails
-      .map(({ key, value, iconName }) =>
-        value ? <ContactDetails key={key} type={key} value={value} iconName={iconName} /> : null,
-      )
-      .filter(details => !!details);
-
-    return (
-      <ScrollView style={style.container}>
-        <HeaderBar showLeftButton onBackPress={this.onBackPress} />
-        <View style={style.wrapper}>
-          <View style={style.avatarContainer}>
-            <UserAvatar
-              userName={name}
-              thumbnail={thumbnail}
-              size={76}
-              fontSize={30}
-              defaultBGColor={theme['color-primary-default']}
-              channel={channel}
-            />
-          </View>
-          <View style={style.userNameContainer}>
-            <CustomText style={style.nameLabel}>{name}</CustomText>
-          </View>
-          {senderAdditionalInfo.description ? (
-            <View style={style.descriptionContainer}>
-              <CustomText style={style.description}>{senderAdditionalInfo.description}</CustomText>
-            </View>
-          ) : null}
-          <View style={style.socialIconsContainer}>{getSocialProfileValue}</View>
-          <View>{getContactDetails}</View>
-          <View style={style.separationView} />
-          <View style={style.labelView}>
-            <CustomText style={style.itemListViewTitle}>
-              {i18n.t('CONVERSATION_LABELS.TITLE')}
-            </CustomText>
-            <LabelView conversationDetails={conversationDetails} conversationId={conversationId} />
-          </View>
-          {this.renderConversationAttributes()}
-          {this.renderContactAttributes()}
+          <ConversationParticipants conversationId={conversationId} />
+          <ConversationAttributes conversationDetails={conversationDetails} />
+          <ContactAttributes conversationDetails={conversationDetails} />
         </View>
+        <BottomSheetModal
+          bottomSheetModalRef={labelActionModal}
+          initialSnapPoints={labelActionModalSnapPoints}
+          showHeader
+          headerTitle={i18n.t('CONVERSATION.LABELS')}
+          closeFilter={closeLabelActionModal}
+          children={
+            <LabelConversationItems
+              colors={colors}
+              conversationDetails={conversationDetails}
+              closeModal={closeLabelActionModal}
+            />
+          }
+        />
       </ScrollView>
-    );
-  }
-}
+    </SafeAreaView>
+  );
+};
 
-function bindAction(dispatch) {
-  return {
-    getAllCustomAttributes: () => dispatch(getAllCustomAttributes()),
-  };
-}
-function mapStateToProps(state) {
-  return {
-    user: state.auth.user,
-    attributes: state.conversation.customAttributes,
-  };
-}
-
-const ConversationDetails = withStyles(ConversationDetailsComponent, styles);
-export default connect(mapStateToProps, bindAction)(ConversationDetails);
+const propTypes = {
+  navigation: PropTypes.shape({
+    navigate: PropTypes.func.isRequired,
+    goBack: PropTypes.func.isRequired,
+  }).isRequired,
+  route: PropTypes.shape({
+    params: PropTypes.shape({
+      conversationDetails: PropTypes.object.isRequired,
+    }).isRequired,
+  }).isRequired,
+  theme: PropTypes.object,
+};
+ConversationDetailsScreen.propTypes = propTypes;
+export default ConversationDetailsScreen;

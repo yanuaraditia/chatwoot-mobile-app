@@ -1,19 +1,19 @@
 import BaseActionCableConnector from './BaseActionCableConnector';
 
 import {
-  addMessage,
+  addOrUpdateMessage,
   addConversation,
   updateConversation,
-  updateContactsPresence,
+  updateConversationLastActivity,
 } from 'reducer/conversationSlice';
 
+import { updateAgentsPresence } from 'reducer/inboxAgentsSlice';
 import conversationActions from 'reducer/conversationSlice.action';
-import {
-  addUserTypingToConversation,
-  removeUserFromTypingConversation,
-} from '../actions/conversation';
-import { addOrUpdateActiveUsers } from '../actions/auth';
 import { store } from '../store';
+import { setCurrentUserAvailability } from 'reducer/authSlice';
+import { addUserToTyping, destroyUserFromTyping } from 'reducer/conversationTypingSlice';
+import { addNotification } from 'reducer/notificationSlice';
+import { addContact, updateContactsPresence } from 'reducer/contactSlice';
 
 class ActionCableConnector extends BaseActionCableConnector {
   constructor(pubsubToken, webSocketUrl, accountId, userId) {
@@ -26,30 +26,37 @@ class ActionCableConnector extends BaseActionCableConnector {
       'conversation.status_changed': this.onStatusChange,
       'assignee.changed': this.onAssigneeChanged,
       'conversation.read': this.onConversationRead,
+      'conversation.updated': this.onConversationUpdated,
       'presence.update': this.onPresenceUpdate,
       'conversation.typing_on': this.onTypingOn,
       'conversation.typing_off': this.onTypingOff,
+      'notification.created': this.onNotificationCreated,
       // TODO: Handle all these events
       //   'conversation.contact_changed': this.onConversationContactChange,
       //   'contact.deleted': this.onContactDelete,
       //   'contact.updated': this.onContactUpdate,
       //   'conversation.mentioned': this.onConversationMentioned,
-      //   'notification.created': this.onNotificationCreated,
       //   'first.reply.created': this.onFirstReplyCreated,
     };
   }
 
   onMessageCreated = message => {
-    store.dispatch(addMessage(message));
+    store.dispatch(addOrUpdateMessage(message));
+    const {
+      conversation: { last_activity_at: lastActivityAt },
+      conversation_id: conversationId,
+    } = message;
+    store.dispatch(updateConversationLastActivity({ lastActivityAt, conversationId }));
   };
 
   onMessageUpdated = data => {
-    store.dispatch(addMessage(data));
+    store.dispatch(addOrUpdateMessage(data));
   };
 
   onConversationCreated = data => {
     store.dispatch(addConversation(data));
     store.dispatch(conversationActions.fetchConversationStats({}));
+    store.dispatch(addContact(data));
   };
 
   onStatusChange = data => {
@@ -69,10 +76,22 @@ class ActionCableConnector extends BaseActionCableConnector {
     store.dispatch(updateConversation(data));
   };
 
+  onConversationUpdated = data => {
+    const { id } = data;
+    if (id) {
+      store.dispatch(updateConversation(data));
+      store.dispatch(addContact(data));
+    }
+    store.dispatch(conversationActions.fetchConversationStats({}));
+  };
+
+  onNotificationCreated = data => {
+    store.dispatch(addNotification(data));
+  };
+
   onPresenceUpdate = ({ contacts, users }) => {
-    //TODO: Move this to agentSlice and authSlice, https://github.com/chatwoot/chatwoot-mobile-next/blob/main/src/helpers/ActionCable.js#L64
     store.dispatch(
-      addOrUpdateActiveUsers({
+      updateAgentsPresence({
         users,
       }),
     );
@@ -81,16 +100,21 @@ class ActionCableConnector extends BaseActionCableConnector {
         contacts,
       }),
     );
+    store.dispatch(
+      setCurrentUserAvailability({
+        users,
+      }),
+    );
   };
 
   onTypingOn = ({ conversation, user }) => {
-    //TODO: Move this to typingSlice
     const conversationId = conversation.id;
 
     this.clearTimer(conversationId);
+
     store.dispatch(
-      addUserTypingToConversation({
-        conversation,
+      addUserToTyping({
+        conversationId,
         user,
       }),
     );
@@ -98,14 +122,13 @@ class ActionCableConnector extends BaseActionCableConnector {
   };
 
   onTypingOff = ({ conversation, user }) => {
-    //TODO: Move this to typingSlice
     const conversationId = conversation.id;
 
     this.clearTimer(conversationId);
 
     store.dispatch(
-      removeUserFromTypingConversation({
-        conversation,
+      destroyUserFromTyping({
+        conversationId,
         user,
       }),
     );
